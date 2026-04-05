@@ -1,0 +1,44 @@
+{
+  "target_group": {
+    "description": "接收通知的QQ群号",
+    "type": "string",
+    "hint": "只支持一个群统一接收所有服务器通知，例如 123456789",
+    "default": ""
+  },
+  "check_interval": {
+    "description": "全局默认检测间隔（秒）",
+    "type": "int",
+    "hint": "当某台服务器未单独填写 check_interval 时，使用这里的值。建议 30-60 秒。",
+    "default": 45
+  },
+  "enable_auto_monitor": {
+    "description": "插件加载后自动启动监控",
+    "type": "bool",
+    "default": true
+  },
+  "servers": {
+    "description": "多服务器配置列表",
+    "type": "list",
+    "hint": "每一项是一台服务器。可在 WebUI 中直接增删改。",
+    "default": [
+      {
+        "key": "xiangcao_jiyuan_ubuntupro",
+        "enabled": true,
+        "server_name": "香草纪元ubuntupro",
+        "server_ip": "103.40.14.91",
+        "server_port": 21294,
+        "server_type": "bedrock",
+        "check_interval": 45
+      },
+      {
+        "key": "longzhi_maoxian_ubuntupro",
+        "enabled": true,
+        "server_name": "龙之冒险ubuntupro",
+        "server_ip": "103.40.14.91",
+        "server_port": 21295,
+        "server_type": "bedrock",
+        "check_interval": 45
+      }
+    ]
+  }
+}
