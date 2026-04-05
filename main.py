@@ -8,7 +8,7 @@ from astrbot.api import logger, AstrBotConfig
 from astrbot.api.event.filter import PlatformAdapterType
 
 
-@register("minecraft_monitor", "xlyang", "Minecraft 多服务器监控插件", "0.1")
+@register("minecraft_multi_monitor", "xlyang", "Minecraft 多服务器监控插件", "0.1")
 class MyPlugin(Star):
     DISPLAY_DEFAULTS = {
         "show_server_name": True,

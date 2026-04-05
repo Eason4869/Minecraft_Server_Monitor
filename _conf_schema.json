@@ -81,54 +81,58 @@
   },
   "servers": {
     "description": "多服务器配置列表",
-    "type": "list",
-    "hint": "每一项是一台服务器，支持在 GUI 中逐栏填写，无需手动输入字典。",
-    "items": {
-      "type": "object",
-      "items": {
-        "key": {
-          "description": "服务器唯一标识",
-          "type": "string",
-          "hint": "建议填写英文字母、数字或下划线，例如 survival_main。",
-          "default": ""
-        },
-        "enabled": {
-          "description": "启用该服务器监控",
-          "type": "bool",
-          "default": true
-        },
-        "server_name": {
-          "description": "服务器名称",
-          "type": "string",
-          "default": "Minecraft服务器"
-        },
-        "server_ip": {
-          "description": "服务器地址",
-          "type": "string",
-          "hint": "支持域名或 IP，例如 play.example.com。",
-          "default": ""
-        },
-        "server_port": {
-          "description": "服务器端口",
-          "type": "int",
-          "default": 25565
-        },
-        "server_type": {
-          "description": "服务器类型",
-          "type": "string",
-          "hint": "填写 java 或 bedrock。",
-          "default": "java"
-        },
-        "check_interval": {
-          "description": "单服务器检测间隔（秒）",
-          "type": "int",
-          "hint": "留空或填 0 时将自动回退到全局默认值。",
-          "default": 45
+    "type": "template_list",
+    "hint": "每一项是一台服务器，AstrBot 会按表单逐栏填写，无需手动输入字典。",
+    "templates": {
+      "minecraft_server": {
+        "name": "Minecraft 服务器",
+        "hint": "添加一台需要监控的 Minecraft 服务器。",
+        "items": {
+          "key": {
+            "description": "服务器唯一标识",
+            "type": "string",
+            "hint": "建议填写英文字母、数字或下划线，例如 survival_main。",
+            "default": ""
+          },
+          "enabled": {
+            "description": "启用该服务器监控",
+            "type": "bool",
+            "default": true
+          },
+          "server_name": {
+            "description": "服务器名称",
+            "type": "string",
+            "default": "Minecraft服务器"
+          },
+          "server_ip": {
+            "description": "服务器地址",
+            "type": "string",
+            "hint": "支持域名或 IP，例如 play.example.com。",
+            "default": ""
+          },
+          "server_port": {
+            "description": "服务器端口",
+            "type": "int",
+            "default": 25565
+          },
+          "server_type": {
+            "description": "服务器类型",
+            "type": "string",
+            "hint": "填写 java 或 bedrock。",
+            "default": "java"
+          },
+          "check_interval": {
+            "description": "单服务器检测间隔（秒）",
+            "type": "int",
+            "hint": "填 0 时将自动回退到全局默认值。",
+            "default": 45
+          }
         }
       }
     },
     "default": [
       {
+        "__template_key": "minecraft_server",
         "key": "example_java_server",
         "enabled": true,
         "server_name": "示例Java服务器",
