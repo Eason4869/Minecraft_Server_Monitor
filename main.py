@@ -97,7 +97,9 @@ class MyPlugin(Star):
         return server_type if server_type in ("bedrock", "java") else "java"
 
     def _load_servers_from_config(self):
-        raw_servers = self.config.get("servers", [])
+        raw_servers = self.config.get("server_entries")
+        if raw_servers is None:
+            raw_servers = self.config.get("servers", [])
         servers = []
 
         if not isinstance(raw_servers, list):

@@ -79,7 +79,7 @@
       "show_hitokoto": false
     }
   },
-  "servers": {
+  "server_entries": {
     "description": "多服务器配置列表",
     "type": "template_list",
     "hint": "每一项是一台服务器，AstrBot 会按表单逐栏填写，无需手动输入字典。",
@@ -130,17 +130,6 @@
         }
       }
     },
-    "default": [
-      {
-        "__template_key": "minecraft_server",
-        "key": "example_java_server",
-        "enabled": true,
-        "server_name": "示例Java服务器",
-        "server_ip": "play.example.com",
-        "server_port": 25565,
-        "server_type": "java",
-        "check_interval": 45
-      }
-    ]
+    "default": []
   }
 }
