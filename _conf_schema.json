@@ -2,13 +2,13 @@
   "target_group": {
     "description": "接收通知的QQ群号",
     "type": "string",
-    "hint": "只支持一个群统一接收所有服务器通知，例如 123456789",
+    "hint": "只支持一个群统一接收所有服务器通知，例如 123456789。",
     "default": ""
   },
   "check_interval": {
     "description": "全局默认检测间隔（秒）",
     "type": "int",
-    "hint": "当某台服务器未单独填写 check_interval 时，使用这里的值。建议 30-60 秒。",
+    "hint": "当某台服务器未单独填写检测间隔时，使用这里的值。建议 30-60 秒。",
     "default": 45
   },
   "enable_auto_monitor": {
@@ -16,27 +16,125 @@
     "type": "bool",
     "default": true
   },
+  "display_options": {
+    "description": "消息展示项开关",
+    "type": "object",
+    "hint": "控制手动查询和自动通知中显示哪些栏目。",
+    "items": {
+      "show_server_name": {
+        "description": "展示服务器名称",
+        "type": "bool",
+        "default": true
+      },
+      "show_server_address": {
+        "description": "展示服务器地址",
+        "type": "bool",
+        "default": false
+      },
+      "show_server_type": {
+        "description": "展示服务器类型",
+        "type": "bool",
+        "default": true
+      },
+      "show_game_version": {
+        "description": "展示游戏版本",
+        "type": "bool",
+        "default": false
+      },
+      "show_online_players": {
+        "description": "展示在线玩家数量",
+        "type": "bool",
+        "default": true
+      },
+      "show_motd": {
+        "description": "展示 MOTD",
+        "type": "bool",
+        "default": true
+      },
+      "show_player_list": {
+        "description": "展示当前在线玩家列表",
+        "type": "bool",
+        "default": false
+      },
+      "show_update_time": {
+        "description": "展示更新时间",
+        "type": "bool",
+        "default": true
+      },
+      "show_hitokoto": {
+        "description": "展示一言",
+        "type": "bool",
+        "default": false
+      }
+    },
+    "default": {
+      "show_server_name": true,
+      "show_server_address": false,
+      "show_server_type": true,
+      "show_game_version": false,
+      "show_online_players": true,
+      "show_motd": true,
+      "show_player_list": false,
+      "show_update_time": true,
+      "show_hitokoto": false
+    }
+  },
   "servers": {
     "description": "多服务器配置列表",
     "type": "list",
-    "hint": "每一项是一台服务器。可在 WebUI 中直接增删改。",
+    "hint": "每一项是一台服务器，支持在 GUI 中逐栏填写，无需手动输入字典。",
+    "items": {
+      "type": "object",
+      "items": {
+        "key": {
+          "description": "服务器唯一标识",
+          "type": "string",
+          "hint": "建议填写英文字母、数字或下划线，例如 survival_main。",
+          "default": ""
+        },
+        "enabled": {
+          "description": "启用该服务器监控",
+          "type": "bool",
+          "default": true
+        },
+        "server_name": {
+          "description": "服务器名称",
+          "type": "string",
+          "default": "Minecraft服务器"
+        },
+        "server_ip": {
+          "description": "服务器地址",
+          "type": "string",
+          "hint": "支持域名或 IP，例如 play.example.com。",
+          "default": ""
+        },
+        "server_port": {
+          "description": "服务器端口",
+          "type": "int",
+          "default": 25565
+        },
+        "server_type": {
+          "description": "服务器类型",
+          "type": "string",
+          "hint": "填写 java 或 bedrock。",
+          "default": "java"
+        },
+        "check_interval": {
+          "description": "单服务器检测间隔（秒）",
+          "type": "int",
+          "hint": "留空或填 0 时将自动回退到全局默认值。",
+          "default": 45
+        }
+      }
+    },
     "default": [
       {
-        "key": "xiangcao_jiyuan_ubuntupro",
+        "key": "example_java_server",
         "enabled": true,
-        "server_name": "香草纪元ubuntupro",
-        "server_ip": "103.40.14.91",
-        "server_port": 21294,
-        "server_type": "bedrock",
-        "check_interval": 45
-      },
-      {
-        "key": "longzhi_maoxian_ubuntupro",
-        "enabled": true,
-        "server_name": "龙之冒险ubuntupro",
-        "server_ip": "103.40.14.91",
-        "server_port": 21295,
-        "server_type": "bedrock",
+        "server_name": "示例Java服务器",
+        "server_ip": "play.example.com",
+        "server_port": 25565,
+        "server_type": "java",
         "check_interval": 45
       }
     ]

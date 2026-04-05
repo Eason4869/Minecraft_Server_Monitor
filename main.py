@@ -8,8 +8,20 @@ from astrbot.api import logger, AstrBotConfig
 from astrbot.api.event.filter import PlatformAdapterType
 
 
-@register("minecraft_monitor", "YourName", "Minecraft多服务器监控插件", "2.1.0")
+@register("minecraft_monitor", "xlyang", "Minecraft 多服务器监控插件", "0.1")
 class MyPlugin(Star):
+    DISPLAY_DEFAULTS = {
+        "show_server_name": True,
+        "show_server_address": False,
+        "show_server_type": True,
+        "show_game_version": False,
+        "show_online_players": True,
+        "show_motd": True,
+        "show_player_list": False,
+        "show_update_time": True,
+        "show_hitokoto": False,
+    }
+
     def __init__(self, context: Context, config: AstrBotConfig = None):
         super().__init__(context)
         self.context = context
@@ -19,8 +31,9 @@ class MyPlugin(Star):
         self.last_update_time = None
 
         self.target_group = self._parse_target_group(self.config.get("target_group"))
-        self.enable_auto_monitor = bool(self.config.get("enable_auto_monitor", False))
+        self.enable_auto_monitor = self._safe_bool(self.config.get("enable_auto_monitor", False), False)
         self.global_check_interval = self._safe_int(self.config.get("check_interval", 45), 45)
+        self.display_options = self._load_display_options()
 
         self.servers = self._load_servers_from_config()
         self.server_states = self._build_initial_states(self.servers)
@@ -54,6 +67,31 @@ class MyPlugin(Star):
         value = str(value).strip()
         return value if value.isdigit() else None
 
+    def _safe_bool(self, value, default=False):
+        if isinstance(value, bool):
+            return value
+        if value is None:
+            return default
+
+        value_str = str(value).strip().lower()
+        if value_str in {"true", "1", "yes", "on"}:
+            return True
+        if value_str in {"false", "0", "no", "off"}:
+            return False
+        return default
+
+    def _load_display_options(self):
+        raw_options = self.config.get("display_options", {})
+        options = self.DISPLAY_DEFAULTS.copy()
+
+        if not isinstance(raw_options, dict):
+            logger.warning("配置项 display_options 不是对象，已使用默认展示设置。")
+            return options
+
+        for key, default in self.DISPLAY_DEFAULTS.items():
+            options[key] = self._safe_bool(raw_options.get(key, default), default)
+        return options
+
     def _normalize_server_type(self, server_type: str) -> str:
         server_type = str(server_type or "java").strip().lower()
         return server_type if server_type in ("bedrock", "java") else "java"
@@ -71,7 +109,7 @@ class MyPlugin(Star):
                 logger.warning(f"servers 第 {index} 项不是对象，已跳过。")
                 continue
 
-            enabled = bool(item.get("enabled", True))
+            enabled = self._safe_bool(item.get("enabled", True), True)
             if not enabled:
                 continue
 
@@ -177,7 +215,7 @@ class MyPlugin(Star):
                 async with aiohttp.ClientSession() as session:
                     async with session.get(
                         api_url,
-                        headers={"User-Agent": "MinecraftServerMonitor/2.1"},
+                        headers={"User-Agent": "MinecraftServerMonitor/2.2"},
                         timeout=aiohttp.ClientTimeout(total=25)
                     ) as response:
                         raw_text = await response.text()
@@ -280,31 +318,45 @@ class MyPlugin(Star):
         status_emoji = "🟢" if server_data["status"] == "online" else "🔴"
         type_label = "基岩版" if server_data["server_type"] == "bedrock" else "Java版"
 
-        lines = [
-            f"{status_emoji} 服务器: {server_data['name']}",
-            f"🌐 地址: {server_data['server_ip']}:{server_data['server_port']}",
-            f"🔧 类型: {type_label}",
-            f"🎮 版本: {server_data['version']}",
-            f"👥 在线玩家: {server_data['online']}/{server_data['max']}",
-        ]
+        lines = []
+
+        if self.display_options["show_server_name"]:
+            lines.append(f"{status_emoji} 服务器: {server_data['name']}")
+        else:
+            lines.append(f"{status_emoji} 状态: {'在线' if server_data['status'] == 'online' else '离线'}")
+
+        if self.display_options["show_server_address"]:
+            lines.append(f"🌐 地址: {server_data['server_ip']}:{server_data['server_port']}")
+
+        if self.display_options["show_server_type"]:
+            lines.append(f"🔧 类型: {type_label}")
+
+        if self.display_options["show_game_version"]:
+            lines.append(f"🎮 版本: {server_data['version']}")
+
+        if self.display_options["show_online_players"]:
+            lines.append(f"👥 在线玩家: {server_data['online']}/{server_data['max']}")
 
         motd = server_data.get("motd", "").strip()
-        if motd:
+        if self.display_options["show_motd"] and motd:
             if len(motd) > 120:
                 motd = motd[:120] + "..."
             lines.append(f"📝 MOTD: {motd}")
 
         player_names = self._extract_player_names(server_data.get("players", []))
-        if player_names:
-            show_names = player_names[:8]
-            line = f"📋 玩家列表: {', '.join(show_names)}"
-            if len(player_names) > 8:
-                line += f" (+{len(player_names) - 8}人)"
-            lines.append(line)
-        else:
-            lines.append("📋 当前无玩家在线")
+        if self.display_options["show_player_list"]:
+            if player_names:
+                show_names = player_names[:8]
+                line = f"📋 玩家列表: {', '.join(show_names)}"
+                if len(player_names) > 8:
+                    line += f" (+{len(player_names) - 8}人)"
+                lines.append(line)
+            else:
+                lines.append("📋 当前无玩家在线")
 
-        lines.append(f"🕒 更新时间: {server_data['update_time']}")
+        if self.display_options["show_update_time"]:
+            lines.append(f"🕒 更新时间: {server_data['update_time']}")
+
         return "\n".join(lines)
 
     def _check_changes(self, server: dict, server_data: dict):
@@ -389,8 +441,10 @@ class MyPlugin(Star):
                     changed, message = self._check_changes(server, server_data)
                     if changed:
                         detail = self._format_server_info(server_data)
-                        hitokoto = await self.get_hitokoto()
                         final_message = f"🔔 服务器状态变化：\n{message}\n\n📊 当前状态：\n{detail}"
+                        hitokoto = None
+                        if self.display_options["show_hitokoto"]:
+                            hitokoto = await self.get_hitokoto()
                         if hitokoto:
                             final_message += f"\n\n💬 {hitokoto}"
                         await self.notify_group(final_message)
@@ -424,7 +478,9 @@ class MyPlugin(Star):
     @filter.command("查询")
     async def query_server_status(self, event: AstrMessageEvent):
         text = await self.get_all_server_status_text()
-        hitokoto = await self.get_hitokoto()
+        hitokoto = None
+        if self.display_options["show_hitokoto"]:
+            hitokoto = await self.get_hitokoto()
         if hitokoto:
             text += f"\n\n💬 {hitokoto}"
         yield event.plain_result(text)
