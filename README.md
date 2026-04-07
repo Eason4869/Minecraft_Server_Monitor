@@ -1,6 +1,6 @@
 # AstrBot Minecraft 多服务器监控插件
 
-这是一个面向 AstrBot v3 的 Minecraft 多服务器监控插件，支持同时监控多台 Java 版或 Bedrock 版服务器，并在状态变化时向指定 QQ 群发送通知。
+这是一个面向 AstrBot 的 Minecraft 多服务器监控插件，支持同时监控多台 Java 版或 Bedrock 版服务器，并在状态变化时向指定 QQ 群发送通知。
 
 插件重点能力：
 
@@ -16,7 +16,9 @@
 本插件参考了以下项目的设计与实现思路：
 
 - [cryfly666/astrbot_plugin_apimcmc](https://github.com/cryfly666/astrbot_plugin_apimcmc)
-
+在此插件基础上重点提升了多服务器监控能力，并允许使用者自由开关要发送的每个条目。
+![](https://picgo-temporary-storage-yxl.oss-cn-hangzhou.aliyuncs.com/Yxl-Picgo-temporary/%E5%B1%8F%E5%B9%95%E6%88%AA%E5%9B%BE%202026-04-07%20155043.png)
+![](https://picgo-temporary-storage-yxl.oss-cn-hangzhou.aliyuncs.com/Yxl-Picgo-temporary/20260407155200.png)
 本仓库在整理、重构和文档编写过程中使用了 Codex 协助开发。
 
 当前仓库地址：
@@ -57,7 +59,7 @@
 
 ### 3. GUI 友好的配置方式
 
-多服务器配置已经调整为 GUI 可逐栏填写的结构，不再需要手动输入整段字典。
+多服务器配置已经调整为 GUI 可逐栏填写的结构。
 
 ### 4. 可配置的消息展示项
 

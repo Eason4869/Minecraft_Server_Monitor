@@ -82,7 +82,7 @@
   "server_entries": {
     "description": "多服务器配置列表",
     "type": "template_list",
-    "hint": "每一项是一台服务器，AstrBot 会按表单逐栏填写，无需手动输入字典。",
+    "hint": "每一项是一台服务器",
     "templates": {
       "minecraft_server": {
         "name": "Minecraft 服务器",
