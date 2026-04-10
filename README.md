@@ -5,6 +5,8 @@
 插件重点能力：
 
 - 支持在同一个插件实例中配置多台服务器
+- 支持国内外双 API 查询源
+- 默认使用 MineBBS MOTD API 作为国内源，并可通过 GUI 开关切换到 mcstatus.io
 - 支持 Java / Bedrock 两种服务器类型
 - 支持按服务器独立设置检测间隔
 - 支持手动查询全部服务器状态
@@ -16,10 +18,7 @@
 本插件参考了以下项目的设计与实现思路：
 
 - [cryfly666/astrbot_plugin_apimcmc](https://github.com/cryfly666/astrbot_plugin_apimcmc)
-在此插件基础上重点提升了多服务器监控能力，并允许使用者自由开关要发送的每个条目。
-![](https://picgo-temporary-storage-yxl.oss-cn-hangzhou.aliyuncs.com/Yxl-Picgo-temporary/%E5%B1%8F%E5%B9%95%E6%88%AA%E5%9B%BE%202026-04-07%20155043.png)
-![](https://picgo-temporary-storage-yxl.oss-cn-hangzhou.aliyuncs.com/Yxl-Picgo-temporary/20260407155200.png)
-本仓库在整理、重构和文档编写过程中使用了 Codex 协助开发。
+在此基础上重点增强了多服务器监控、GUI 配置和消息展示项控制能力。
 
 当前仓库地址：
 
@@ -98,6 +97,7 @@
 - `target_group`: 接收通知的 QQ 群号
 - `check_interval`: 全局默认检测间隔
 - `enable_auto_monitor`: 插件加载后是否自动启动监控
+- `mcbbs_api`: 是否使用 MineBBS 作为默认查询源
 - `display_options`: 消息展示项开关
 
 ### 服务器列表配置
@@ -112,6 +112,18 @@
 - `server_type`: `java` 或 `bedrock`
 - `check_interval`: 当前服务器的检测间隔
 
+## 工程结构
+
+当前代码已按职责拆分为包结构：
+
+- `main.py`: AstrBot 插件入口
+- `minecraft_multi_monitor/plugin.py`: 插件主类与指令入口
+- `minecraft_multi_monitor/config.py`: 配置解析与默认值处理
+- `minecraft_multi_monitor/clients.py`: MineBBS / mcstatus 双 API 客户端
+- `minecraft_multi_monitor/monitoring.py`: 消息格式化与状态变化检测
+- `minecraft_multi_monitor/services.py`: 群消息发送与一言服务
+- `minecraft_multi_monitor/models.py`: 数据模型
+
 ## 安装
 
 将本插件目录放入 AstrBot 插件目录中，并确保 AstrBot 能读取以下文件：
@@ -121,22 +133,14 @@
 - `_conf_schema.json`
 - `README.md`
 
-## 开发环境
-
-当前工作区已创建 conda 开发环境：
-
-```bash
-conda activate astrbot_mc_monitor_dev
-```
-
-环境中已安装：
-
-- Python 3.11
-- aiohttp
-
 ## 实现说明
 
-插件通过 `mcstatus.io` API 获取服务器状态，并使用 AstrBot 提供的平台接口向指定群发送消息。
+插件支持两套查询源：
+
+- 国内默认源：`https://motd.minebbs.com/api/status`
+- 国际备用源：`https://api.mcstatus.io/v2/status`
+
+默认启用 MineBBS 作为查询源，更适合中国大陆网络环境；如需切换到国际源，可在 GUI 中关闭 `mcbbs_api`。
 
 一言内容来自：
 
@@ -148,5 +152,5 @@ conda activate astrbot_mc_monitor_dev
 
 - 请确保机器人已加入目标 QQ 群且具备发言权限
 - 请不要把检测间隔设置得过低，建议不低于 30 秒
-- 若某台服务器未填写独立检测间隔，将回退到全局默认值
-- 发布到 GitHub 前，请在 `metadata.yaml` 中补充最终仓库地址
+- 若某台服务器检测间隔填写为 `0` 或负数，将回退到全局默认值
+- 插件当前消息推送逻辑基于 QQ OneBot/AIOCQHTTP 适配器

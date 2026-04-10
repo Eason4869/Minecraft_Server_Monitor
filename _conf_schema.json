@@ -16,6 +16,12 @@
     "type": "bool",
     "default": true
   },
+  "mcbbs_api": {
+    "description": "使用 MineBBS API 作为默认查询源",
+    "type": "bool",
+    "hint": "默认开启。开启时使用 https://motd.minebbs.com/api/status；关闭后切换为 mcstatus.io。",
+    "default": true
+  },
   "display_options": {
     "description": "消息展示项开关",
     "type": "object",
@@ -82,10 +88,10 @@
   "server_entries": {
     "description": "多服务器配置列表",
     "type": "template_list",
-    "hint": "每一项是一台服务器",
+    "hint": "每一项是一台服务器。消息通知和查询结果会优先使用你填写的 server_name。",
     "templates": {
       "minecraft_server": {
-        "name": "Minecraft 服务器",
+        "name": "服务器配置项",
         "hint": "添加一台需要监控的 Minecraft 服务器。",
         "items": {
           "key": {
@@ -102,7 +108,8 @@
           "server_name": {
             "description": "服务器名称",
             "type": "string",
-            "default": "Minecraft服务器"
+            "hint": "建议填写你希望在通知消息里展示的名称；留空时会优先回退到 key。",
+            "default": ""
           },
           "server_ip": {
             "description": "服务器地址",
@@ -124,7 +131,7 @@
           "check_interval": {
             "description": "单服务器检测间隔（秒）",
             "type": "int",
-            "hint": "填 0 时将自动回退到全局默认值。",
+            "hint": "填 0 或负数时将自动回退到全局默认值。",
             "default": 45
           }
         }
