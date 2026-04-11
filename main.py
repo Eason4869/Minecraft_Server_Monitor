@@ -1,8 +1,14 @@
 import asyncio
+import os
+import sys
 
 from astrbot.api import AstrBotConfig, logger
 from astrbot.api.event import AstrMessageEvent, filter
 from astrbot.api.star import Context, Star, register
+
+PLUGIN_DIR = os.path.dirname(os.path.abspath(__file__))
+if PLUGIN_DIR not in sys.path:
+    sys.path.insert(0, PLUGIN_DIR)
 
 from minecraft_multi_monitor.clients import build_status_client
 from minecraft_multi_monitor.config import (
