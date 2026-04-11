@@ -138,6 +138,10 @@ class MineBBSClient:
         for stype in query_modes:
             snapshot = await self._fetch_with_stype(server, source, stype)
             if snapshot is not None:
+                if snapshot.status == "online" and snapshot.online > 0:
+                    verified_snapshot = await self._refetch_for_player_consistency(server, source, stype, snapshot)
+                    if verified_snapshot is not None:
+                        return verified_snapshot
                 return snapshot
 
         return None
@@ -150,6 +154,25 @@ class MineBBSClient:
             if mode not in unique_modes:
                 unique_modes.append(mode)
         return unique_modes
+
+    async def _refetch_for_player_consistency(
+        self,
+        server: ServerConfig,
+        source: str,
+        stype: str,
+        first_snapshot: ServerSnapshot,
+    ) -> ServerSnapshot | None:
+        await asyncio.sleep(0.3)
+        second_snapshot = await self._fetch_with_stype(server, source, stype)
+        if second_snapshot is None:
+            return first_snapshot
+
+        if first_snapshot.players != second_snapshot.players:
+            logger.warning(
+                f"[{source}] [{server.server_name}] MineBBS 返回的玩家列表前后不一致，"
+                f"第一次={first_snapshot.players}，第二次={second_snapshot.players}，优先采用第二次结果"
+            )
+        return second_snapshot
 
     async def _fetch_with_stype(self, server: ServerConfig, source: str, stype: str) -> ServerSnapshot | None:
         params = {
@@ -185,8 +208,13 @@ class MineBBSClient:
                             f"{exc}, body={raw_text[:300]}"
                         )
                         return None
-
-                    return self._parse_response(server, data)
+                    snapshot = self._parse_response(server, data)
+                    logger.info(
+                        f"[{source}] [{server.server_name}] MineBBS 解析结果: "
+                        f"status={snapshot.status}, online={snapshot.online}/{snapshot.max_players}, "
+                        f"players={snapshot.players}"
+                    )
+                    return snapshot
         except asyncio.TimeoutError:
             logger.warning(f"[{source}] [{server.server_name}] MineBBS 查询超时, stype={stype}")
             return None
