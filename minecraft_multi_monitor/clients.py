@@ -179,6 +179,7 @@ class MineBBSClient:
             "ip": server.server_ip,
             "port": str(server.server_port),
             "stype": stype,
+            "_ts": str(int(datetime.now().timestamp() * 1000)),
         }
         try:
             logger.info(
@@ -189,7 +190,11 @@ class MineBBSClient:
                 async with session.get(
                     self.BASE_URL,
                     params=params,
-                    headers={"User-Agent": "MinecraftMultiMonitor/0.1.0"},
+                    headers={
+                        "User-Agent": "MinecraftMultiMonitor/0.1.0",
+                        "Cache-Control": "no-cache",
+                        "Pragma": "no-cache",
+                    },
                     timeout=aiohttp.ClientTimeout(total=15),
                 ) as response:
                     raw_text = await response.text()
