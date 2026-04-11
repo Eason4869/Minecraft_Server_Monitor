@@ -135,21 +135,37 @@ class MineBBSClient:
 
     async def fetch_status(self, server: ServerConfig, source: str) -> ServerSnapshot | None:
         query_modes = self._build_query_modes(server)
-        last_snapshot: ServerSnapshot | None = None
+        snapshots: dict[str, ServerSnapshot] = {}
 
         for stype in query_modes:
             snapshot = await self._fetch_with_stype(server, source, stype)
             if snapshot is None:
                 continue
-            if snapshot.status == "online":
-                return snapshot
-            last_snapshot = snapshot
+            snapshots[stype] = snapshot
 
-        return last_snapshot
+        preferred = "je" if server.server_type == "java" else "be"
+        preferred_snapshot = snapshots.get(preferred)
+        auto_snapshot = snapshots.get("auto")
+
+        if preferred_snapshot and preferred_snapshot.status == "online":
+            if auto_snapshot and auto_snapshot.players != preferred_snapshot.players:
+                logger.info(
+                    f"[{source}] [{server.server_name}] MineBBS auto 与 {preferred} 返回的玩家列表不一致，"
+                    f"优先采用 {preferred} 结果: auto={auto_snapshot.players}, {preferred}={preferred_snapshot.players}"
+                )
+            return preferred_snapshot
+
+        if auto_snapshot:
+            return auto_snapshot
+
+        if preferred_snapshot:
+            return preferred_snapshot
+
+        return None
 
     def _build_query_modes(self, server: ServerConfig) -> list[str]:
         preferred = "je" if server.server_type == "java" else "be"
-        modes = [preferred, "auto"]
+        modes = ["auto", preferred]
         unique_modes: list[str] = []
         for mode in modes:
             if mode not in unique_modes:
@@ -191,13 +207,7 @@ class MineBBSClient:
                         )
                         return None
 
-                    snapshot = self._parse_response(server, data)
-                    if snapshot.status != "online" and stype != "auto":
-                        logger.info(
-                            f"[{source}] [{server.server_name}] MineBBS stype={stype} 未在线，"
-                            "将回退到 auto 再试一次"
-                        )
-                    return snapshot
+                    return self._parse_response(server, data)
         except asyncio.TimeoutError:
             logger.warning(f"[{source}] [{server.server_name}] MineBBS 查询超时, stype={stype}")
             return None
@@ -232,6 +242,12 @@ class MineBBSClient:
 
         error = str(data.get("error") or "").strip() or None
 
+        motd_info = data.get("motd", {})
+        if isinstance(motd_info, dict):
+            motd = str(data.get("pureMotd") or motd_info.get("text") or "")
+        else:
+            motd = str(data.get("pureMotd") or motd_info or "")
+
         return ServerSnapshot(
             key=server.key,
             name=server.server_name,
@@ -239,7 +255,7 @@ class MineBBSClient:
             server_port=server.server_port,
             server_type=normalized_type,
             status="online" if online else "offline",
-            motd=str(data.get("pureMotd") or data.get("motd") or ""),
+            motd=motd,
             version=str(data.get("version", "未知版本")),
             protocol=str(data.get("protocol", "未知")),
             online=online_players,

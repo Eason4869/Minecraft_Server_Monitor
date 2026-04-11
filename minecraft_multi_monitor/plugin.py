@@ -88,12 +88,21 @@ class MyPlugin(Star):
                     state.last_check_ts = now
                     snapshot = await self._fetch_server_data(server, source="monitor")
                     if snapshot is None:
+                        logger.warning(f"[monitor] [{server.server_name}] 本次未获取到服务器状态")
                         continue
+
+                    logger.info(
+                        f"[monitor] [{server.server_name}] 当前状态: "
+                        f"status={snapshot.status}, players={snapshot.online}/{snapshot.max_players}, "
+                        f"names={snapshot.players}"
+                    )
 
                     changed, message = detect_changes(server, state, snapshot)
                     if not changed or not message:
+                        logger.info(f"[monitor] [{server.server_name}] 本次无状态变化")
                         continue
 
+                    logger.info(f"[monitor] [{server.server_name}] 检测到状态变化: {message}")
                     detail = format_server_info(snapshot, self.display_options)
                     final_message = f"🔔 服务器状态变化：\n{message}\n\n📊 当前状态：\n{detail}"
                     if self.display_options.show_hitokoto:
@@ -101,7 +110,9 @@ class MyPlugin(Star):
                         if hitokoto:
                             final_message += f"\n\n💬 {hitokoto}"
 
-                    await notify_group(self.context, self.target_group, final_message)
+                    sent = await notify_group(self.context, self.target_group, final_message)
+                    if not sent:
+                        logger.error(f"[monitor] [{server.server_name}] 状态变化已识别，但群消息发送失败")
         except asyncio.CancelledError:
             logger.info("监控循环已取消")
             raise

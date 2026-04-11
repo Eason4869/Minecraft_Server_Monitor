@@ -23,12 +23,27 @@ async def notify_group(context, target_group: str | None, message: str) -> bool:
         return False
 
     try:
-        platform = context.get_platform(PlatformAdapterType.AIOCQHTTP)
-        if not platform or not hasattr(platform, "get_client"):
-            logger.error("无法获取 AIOCQHTTP 客户端")
+        platform = None
+        tried_platforms: list[str] = []
+
+        for adapter_name in ("AIOCQHTTP", "QQ_OFFICIAL", "SATORI"):
+            adapter_type = getattr(PlatformAdapterType, adapter_name, None)
+            if adapter_type is None:
+                continue
+
+            tried_platforms.append(adapter_name)
+            candidate = context.get_platform(adapter_type)
+            if candidate and hasattr(candidate, "get_client"):
+                platform = candidate
+                logger.info(f"通知发送使用平台适配器: {adapter_name}")
+                break
+
+        if not platform:
+            logger.error(f"无法获取可用的平台客户端，已尝试: {', '.join(tried_platforms) or '无'}")
             return False
 
         client = platform.get_client()
+        logger.info(f"开始发送群消息到 {target_group}，消息长度: {len(message)}")
         result = await client.api.call_action(
             "send_group_msg",
             group_id=int(target_group),
@@ -36,6 +51,7 @@ async def notify_group(context, target_group: str | None, message: str) -> bool:
         )
 
         if result and result.get("message_id"):
+            logger.info(f"群消息发送成功，message_id={result.get('message_id')}")
             return True
 
         logger.warning(f"发送群消息失败: {result}")
