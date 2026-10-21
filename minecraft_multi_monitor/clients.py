@@ -1,112 +1,144 @@
 import asyncio
-from datetime import datetime
+import json
+from datetime import datetime, timezone
+from urllib.parse import quote
 
 import aiohttp
 from astrbot.api import logger
 
+from .config import safe_int
 from .models import ServerConfig, ServerSnapshot
 
 
-def _now_text() -> str:
-    return datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+def _now_text(timestamp=None) -> str:
+    try:
+        moment = (
+            datetime.fromtimestamp(float(timestamp) / 1000, timezone.utc).astimezone()
+            if timestamp is not None
+            else datetime.now().astimezone()
+        )
+    except (TypeError, ValueError, OverflowError, OSError):
+        moment = datetime.now().astimezone()
+    return moment.strftime("%Y-%m-%d %H:%M:%S %z")
 
 
-def _normalize_player_names(player_list) -> list[str]:
-    if isinstance(player_list, str):
-        if not player_list.strip() or player_list.strip() == "无":
-            return []
-        return [name.strip() for name in player_list.split(",") if name.strip()]
-
-    if not isinstance(player_list, list):
+def _normalize_player_names(value) -> list[str]:
+    if isinstance(value, str):
+        value = [] if value.strip() in ("", "无") else value.split(",")
+    if not isinstance(value, list):
         return []
-
-    names: list[str] = []
-    for player in player_list:
+    names = []
+    for player in value[:100]:
         if isinstance(player, dict):
-            names.append(
-                str(
-                    player.get("name_clean")
-                    or player.get("name")
-                    or player.get("username")
-                    or "未知玩家"
-                )
-            )
-        else:
-            names.append(str(player))
+            player = player.get("name_clean") or player.get("name") or player.get("username") or ""
+        name = str(player or "").strip()[:64]
+        if name and name not in names:
+            names.append(name)
     return names
 
 
-class MCStatusClient:
-    async def fetch_status(self, server: ServerConfig, source: str) -> ServerSnapshot | None:
-        api_url = (
-            f"https://api.mcstatus.io/v2/status/"
-            f"{server.server_type}/{server.server_ip}:{server.server_port}?timeout=20"
-        )
+def unavailable_snapshot(server: ServerConfig, error="查询源不可用，请稍后重试") -> ServerSnapshot:
+    return ServerSnapshot(
+        server.key,
+        server.server_name,
+        server.server_ip,
+        server.server_port,
+        server.server_type,
+        "unknown",
+        "",
+        "未知版本",
+        "",
+        0,
+        0,
+        [],
+        "",
+        "",
+        _now_text(),
+        False,
+        error=error,
+    )
+
+
+class JsonClient:
+    def __init__(self):
+        self.session: aiohttp.ClientSession | None = None
+
+    async def close(self):
+        if self.session is not None and not self.session.closed:
+            await self.session.close()
+
+    async def _get_json(self, url, server, source, *, params=None):
+        started = asyncio.get_running_loop().time()
         try:
-            logger.info(f"[{source}] [{server.server_name}] 使用 mcstatus 查询: {api_url}")
-            async with aiohttp.ClientSession() as session:
-                async with session.get(
-                    api_url,
-                    headers={"User-Agent": "MinecraftMultiMonitor/0.1.0"},
-                    timeout=aiohttp.ClientTimeout(total=25),
-                ) as response:
-                    raw_text = await response.text()
-                    if response.status != 200:
-                        logger.warning(
-                            f"[{source}] [{server.server_name}] mcstatus HTTP错误: "
-                            f"{response.status}, body={raw_text[:300]}"
-                        )
-                        return None
-
-                    try:
-                        data = await response.json(content_type=None)
-                    except Exception as exc:
-                        logger.warning(
-                            f"[{source}] [{server.server_name}] mcstatus JSON解析失败: "
-                            f"{exc}, body={raw_text[:300]}"
-                        )
-                        return None
-
-                    return self._parse_response(server, data)
-        except asyncio.TimeoutError:
-            logger.warning(f"[{source}] [{server.server_name}] mcstatus 查询超时")
+            if self.session is None or self.session.closed:
+                self.session = aiohttp.ClientSession(headers={"User-Agent": "EasonClawMC/0.3.0"})
+            async with self.session.get(
+                url, params=params, timeout=aiohttp.ClientTimeout(total=15)
+            ) as response:
+                if response.status != 200:
+                    logger.warning(f"[{source}] [{server.key}] 查询 HTTP {response.status}")
+                    return None
+                # Limit upstream payloads, including a server-provided icon/MOTD.
+                raw = bytearray()
+                async for chunk in response.content.iter_chunked(16384):
+                    raw.extend(chunk)
+                    if len(raw) > 512 * 1024:
+                        raise ValueError("响应超过 512 KiB")
+                data = json.loads(raw)
+                if not isinstance(data, dict):
+                    raise ValueError("API 响应不是对象")
+                return data
+        except (aiohttp.ClientError, asyncio.TimeoutError, ValueError) as exc:
+            elapsed = asyncio.get_running_loop().time() - started
+            logger.warning(
+                f"[{source}] [{server.key}] 查询失败 {type(exc).__name__}: {exc}，耗时 {elapsed:.1f}s"
+            )
             return None
-        except aiohttp.ClientError as exc:
-            logger.warning(f"[{source}] [{server.server_name}] mcstatus 网络错误: {exc}")
+
+
+class MCStatusClient(JsonClient):
+    BASE_URL = "https://api.mcstatus.io/v2/status"
+
+    async def fetch_status(self, server: ServerConfig, source: str) -> ServerSnapshot | None:
+        host = server.server_ip
+        if ":" in host and not host.startswith("["):
+            host = f"[{host}]"
+        address = quote(f"{host}:{server.server_port}", safe="[]:")
+        data = await self._get_json(
+            f"{self.BASE_URL}/{server.server_type}/{address}", server, source, params={"timeout": "5"}
+        )
+        if data is None:
             return None
-        except Exception as exc:
-            logger.error(f"[{source}] [{server.server_name}] mcstatus 查询异常: {exc}")
+        try:
+            return self._parse_response(server, data)
+        except (ValueError, TypeError, AttributeError) as exc:
+            logger.warning(f"[{source}] [{server.key}] mcstatus 解析失败 {type(exc).__name__}: {exc}")
             return None
 
     def _parse_response(self, server: ServerConfig, data: dict) -> ServerSnapshot:
-        online = bool(data.get("online", False))
-        motd_info = data.get("motd", {})
-        if isinstance(motd_info, dict):
-            motd = motd_info.get("clean") or motd_info.get("raw") or ""
-        else:
-            motd = str(motd_info or "")
-
-        version_info = data.get("version", {})
+        if not isinstance(data.get("online"), bool):
+            raise ValueError("缺少布尔 online 字段")
+        online = data["online"]
+        motd_info = data.get("motd") or {}
+        motd = (
+            motd_info.get("clean") or motd_info.get("raw") or ""
+            if isinstance(motd_info, dict)
+            else str(motd_info)
+        )
+        version_info = data.get("version") or {}
         if isinstance(version_info, dict):
-            version = str(version_info.get("name", "未知版本"))
-            protocol = str(version_info.get("protocol", "未知"))
+            version = str(
+                version_info.get("name_clean")
+                or version_info.get("name")
+                or version_info.get("name_raw")
+                or "未知版本"
+            )
+            protocol = str(version_info.get("protocol") or "未知")
         else:
-            version = str(version_info or "未知版本")
-            protocol = "未知"
-
-        players_info = data.get("players", {})
-        if isinstance(players_info, dict):
-            online_players = int(players_info.get("online", 0) or 0)
-            max_players = int(players_info.get("max", 0) or 0)
-            player_names = _normalize_player_names(players_info.get("list", []) or [])
-        else:
-            online_players = 0
-            max_players = 0
-            player_names = []
-
-        map_info = data.get("map", {})
-        map_name = map_info.get("name", "未知") if isinstance(map_info, dict) else "未知"
-
+            version, protocol = str(version_info), "未知"
+        players = data.get("players") or {}
+        if not isinstance(players, dict):
+            players = {}
         return ServerSnapshot(
             key=server.key,
             name=server.server_name,
@@ -114,174 +146,98 @@ class MCStatusClient:
             server_port=server.server_port,
             server_type=server.server_type,
             status="online" if online else "offline",
-            motd=motd,
-            version=version,
+            motd=str(motd)[:1000],
+            version=version[:200],
             protocol=protocol,
-            online=online_players,
-            max_players=max_players,
-            players=player_names,
-            software=str(data.get("software", "未知")),
-            map_name=str(map_name),
-            update_time=_now_text(),
+            online=max(0, safe_int(players.get("online"), 0)) if online else 0,
+            max_players=max(0, safe_int(players.get("max"), 0)) if online else 0,
+            players=_normalize_player_names(players.get("list")) if online else [],
+            software=str(data.get("software") or "未知"),
+            map_name="未知",
+            update_time=_now_text(data.get("retrieved_at")),
             raw_online=online,
-            host=f"{server.server_ip}:{server.server_port}",
-            delay=None,
-            error=None,
+            source="mcstatus.io",
+            icon=str(data.get("icon") or ""),
         )
 
 
-class MineBBSClient:
+class MineBBSClient(JsonClient):
     BASE_URL = "https://motd.minebbs.com/api/status"
 
     async def fetch_status(self, server: ServerConfig, source: str) -> ServerSnapshot | None:
-        query_modes = self._build_query_modes(server)
-        for stype in query_modes:
-            snapshot = await self._fetch_with_stype(server, source, stype)
-            if snapshot is not None:
-                if snapshot.status == "online" and snapshot.online > 0:
-                    verified_snapshot = await self._refetch_for_player_consistency(server, source, stype, snapshot)
-                    if verified_snapshot is not None:
-                        return verified_snapshot
-                return snapshot
+        return await self._fetch_with_stype(server, source, "je" if server.server_type == "java" else "be")
 
-        return None
-
-    def _build_query_modes(self, server: ServerConfig) -> list[str]:
-        preferred = "je" if server.server_type == "java" else "be"
-        modes = [preferred]
-        unique_modes: list[str] = []
-        for mode in modes:
-            if mode not in unique_modes:
-                unique_modes.append(mode)
-        return unique_modes
-
-    async def _refetch_for_player_consistency(
-        self,
-        server: ServerConfig,
-        source: str,
-        stype: str,
-        first_snapshot: ServerSnapshot,
-    ) -> ServerSnapshot | None:
-        await asyncio.sleep(0.3)
-        second_snapshot = await self._fetch_with_stype(server, source, stype)
-        if second_snapshot is None:
-            return first_snapshot
-
-        if first_snapshot.players != second_snapshot.players:
-            logger.warning(
-                f"[{source}] [{server.server_name}] MineBBS 返回的玩家列表前后不一致，"
-                f"第一次={first_snapshot.players}，第二次={second_snapshot.players}，优先采用第二次结果"
-            )
-        return second_snapshot
-
-    async def _fetch_with_stype(self, server: ServerConfig, source: str, stype: str) -> ServerSnapshot | None:
-        params = {
-            "ip": server.server_ip,
-            "port": str(server.server_port),
-            "stype": stype,
-            "_ts": str(int(datetime.now().timestamp() * 1000)),
-        }
+    async def _fetch_with_stype(self, server, source, stype):
+        data = await self._get_json(
+            self.BASE_URL,
+            server,
+            source,
+            params={
+                "ip": server.server_ip,
+                "port": str(server.server_port),
+                "stype": stype,
+            },
+        )
+        if data is None:
+            return None
         try:
-            logger.info(
-                f"[{source}] [{server.server_name}] 使用 MineBBS 查询: "
-                f"{self.BASE_URL} ip={server.server_ip} port={server.server_port} stype={stype}"
-            )
-            async with aiohttp.ClientSession() as session:
-                async with session.get(
-                    self.BASE_URL,
-                    params=params,
-                    headers={
-                        "User-Agent": "MinecraftMultiMonitor/0.1.0",
-                        "Cache-Control": "no-cache",
-                        "Pragma": "no-cache",
-                    },
-                    timeout=aiohttp.ClientTimeout(total=15),
-                ) as response:
-                    raw_text = await response.text()
-                    if response.status != 200:
-                        logger.warning(
-                            f"[{source}] [{server.server_name}] MineBBS HTTP错误: "
-                            f"{response.status}, body={raw_text[:300]}"
-                        )
-                        return None
-
-                    try:
-                        data = await response.json(content_type=None)
-                    except Exception as exc:
-                        logger.warning(
-                            f"[{source}] [{server.server_name}] MineBBS JSON解析失败: "
-                            f"{exc}, body={raw_text[:300]}"
-                        )
-                        return None
-                    snapshot = self._parse_response(server, data)
-                    logger.info(
-                        f"[{source}] [{server.server_name}] MineBBS 解析结果: "
-                        f"status={snapshot.status}, online={snapshot.online}/{snapshot.max_players}, "
-                        f"players={snapshot.players}"
-                    )
-                    return snapshot
-        except asyncio.TimeoutError:
-            logger.warning(f"[{source}] [{server.server_name}] MineBBS 查询超时, stype={stype}")
-            return None
-        except aiohttp.ClientError as exc:
-            logger.warning(f"[{source}] [{server.server_name}] MineBBS 网络错误: {exc}")
-            return None
-        except Exception as exc:
-            logger.error(f"[{source}] [{server.server_name}] MineBBS 查询异常: {exc}")
+            return self._parse_response(server, data)
+        except (ValueError, TypeError, AttributeError) as exc:
+            logger.warning(f"[{source}] [{server.key}] MineBBS 解析失败 {type(exc).__name__}: {exc}")
             return None
 
     def _parse_response(self, server: ServerConfig, data: dict) -> ServerSnapshot:
-        raw_status = str(data.get("status", "offline")).strip().lower()
-        raw_type = str(data.get("type", "")).strip().lower()
-        online = raw_status == "online"
-
-        if raw_type == "java":
-            normalized_type = "java"
-        elif raw_type == "bedrock":
-            normalized_type = "bedrock"
-        else:
-            normalized_type = server.server_type
-
-        players_info = data.get("players", {})
-        if isinstance(players_info, dict):
-            online_players = int(players_info.get("online", 0) or 0)
-            max_players = int(players_info.get("max", 0) or 0)
-            player_names = _normalize_player_names(players_info.get("sample", []))
-        else:
-            online_players = 0
-            max_players = 0
-            player_names = []
-
-        error = str(data.get("error") or "").strip() or None
-
-        motd_info = data.get("motd", {})
-        if isinstance(motd_info, dict):
-            motd = str(data.get("pureMotd") or motd_info.get("text") or "")
-        else:
-            motd = str(data.get("pureMotd") or motd_info or "")
-
+        status = str(data.get("status") or "").strip().lower()
+        if status not in {"online", "offline"}:
+            raise ValueError("缺少有效 status 字段")
+        online = status == "online"
+        players = data.get("players") or {}
+        if not isinstance(players, dict):
+            players = {}
+        motd_info = data.get("motd") or {}
+        motd = (
+            data.get("pureMotd")
+            or (motd_info.get("text") if isinstance(motd_info, dict) else str(motd_info))
+            or ""
+        )
         return ServerSnapshot(
             key=server.key,
             name=server.server_name,
             server_ip=server.server_ip,
             server_port=server.server_port,
-            server_type=normalized_type,
-            status="online" if online else "offline",
-            motd=motd,
-            version=str(data.get("version", "未知版本")),
-            protocol=str(data.get("protocol", "未知")),
-            online=online_players,
-            max_players=max_players,
-            players=player_names,
-            software=str(data.get("type", "未知")),
+            server_type=server.server_type,
+            status=status,
+            motd=str(motd)[:1000],
+            version=str(data.get("version") or "未知版本")[:200],
+            protocol=str(data.get("protocol") or "未知"),
+            online=max(0, safe_int(players.get("online"), 0)) if online else 0,
+            max_players=max(0, safe_int(players.get("max"), 0)) if online else 0,
+            players=_normalize_player_names(players.get("sample")) if online else [],
+            software=str(data.get("type") or "未知"),
             map_name="未知",
             update_time=_now_text(),
             raw_online=online,
-            host=str(data.get("host") or f"{server.server_ip}:{server.server_port}"),
-            delay=int(data.get("delay", 0) or 0) if data.get("delay") is not None else None,
-            error=error,
+            delay=safe_int(data.get("delay"), 0) if data.get("delay") is not None else None,
+            error=str(data.get("error") or "")[:200] or None,
+            source="MineBBS",
         )
 
 
-def build_status_client(use_mcbbs_api: bool):
-    return MineBBSClient() if use_mcbbs_api else MCStatusClient()
+class StatusClient:
+    def __init__(self, use_mcbbs_api: bool, enable_fallback: bool = True):
+        self.primary = MineBBSClient() if use_mcbbs_api else MCStatusClient()
+        self.secondary = MCStatusClient() if use_mcbbs_api else MineBBSClient()
+        self.enable_fallback = enable_fallback
+
+    async def fetch_status(self, server, source):
+        snapshot = await self.primary.fetch_status(server, source)
+        if snapshot is None and self.enable_fallback:
+            snapshot = await self.secondary.fetch_status(server, source)
+        return snapshot
+
+    async def close(self):
+        await asyncio.gather(self.primary.close(), self.secondary.close())
+
+
+def build_status_client(use_mcbbs_api: bool, enable_fallback: bool = True):
+    return StatusClient(use_mcbbs_api, enable_fallback)

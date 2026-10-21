@@ -1,8 +1,8 @@
 {
   "target_group": {
-    "description": "接收通知的QQ群号",
+    "description": "旧版通知QQ群（兼容迁移）",
     "type": "string",
-    "hint": "只支持一个群统一接收所有服务器通知，例如 123456789。",
+    "hint": "推荐留空并使用 group_entries。仅能唯一确定一个 OneBot 平台时自动迁移旧配置。",
     "default": ""
   },
   "check_interval": {
@@ -120,23 +120,94 @@
           "server_port": {
             "description": "服务器端口",
             "type": "int",
-            "default": 25565
+            "default": 25565,
+            "hint": "Java 常用 25565；选择 Bedrock 时请填写实际端口（常用 19132）。"
           },
           "server_type": {
             "description": "服务器类型",
             "type": "string",
             "hint": "填写 java 或 bedrock。",
-            "default": "java"
+            "default": "java",
+            "options": [
+              "java",
+              "bedrock"
+            ]
           },
           "check_interval": {
             "description": "单服务器检测间隔（秒）",
             "type": "int",
             "hint": "填 0 或负数时将自动回退到全局默认值。",
-            "default": 45
+            "default": 0
           }
         }
       }
     },
     "default": []
+  },
+  "enable_api_fallback": {
+    "description": "查询源失败时尝试备用源",
+    "type": "bool",
+    "default": true,
+    "hint": "仅在 HTTP、网络或解析错误时切换；有效的离线结果不切换。"
+  },
+  "group_entries": {
+    "description": "分群服务器订阅",
+    "type": "template_list",
+    "default": [],
+    "hint": "每个完整 UMO 对应一个群会话。管理员在群内 /mc 本群 获取 UMO，或直接 /mc 订阅 key 自动保存。",
+    "templates": {
+      "group_subscription": {
+        "name": "群订阅",
+        "items": {
+          "session": {
+            "description": "群会话 UMO",
+            "type": "string",
+            "default": "",
+            "hint": "完整填写平台实例ID:GroupMessage:群ID；不要只填群号。"
+          },
+          "server_keys": {
+            "description": "本群可查询和订阅的服务器 key",
+            "type": "list",
+            "default": [],
+            "hint": "必须与 server_entries 中的 key 一致；已禁用服务器保留绑定但不查询。空列表表示未授权任何服务器。"
+          },
+          "default_server": {
+            "description": "默认查询服务器 key",
+            "type": "string",
+            "default": "",
+            "hint": "留空查询本群所有订阅；填写时必须在 server_keys 中。"
+          },
+          "query_style": {
+            "description": "查询展示样式",
+            "type": "string",
+            "options": [
+              "image",
+              "text"
+            ],
+            "default": "image"
+          },
+          "notification_style": {
+            "description": "通知展示样式",
+            "type": "string",
+            "options": [
+              "text",
+              "image"
+            ],
+            "default": "text"
+          },
+          "notify_mode": {
+            "description": "通知类型",
+            "type": "string",
+            "options": [
+              "all",
+              "status",
+              "off"
+            ],
+            "default": "all",
+            "hint": "all 包含人数与样本变化；status 仅上下线及查询异常恢复；off 关闭通知但保留查询。"
+          }
+        }
+      }
+    }
   }
 }

@@ -1,0 +1,218 @@
+[
+  {
+    "file": "status-overview.png",
+    "width": 800,
+    "height": 1013,
+    "initialViewport": {
+      "width": 1280,
+      "height": 720
+    },
+    "requestedViewport": {
+      "width": 800,
+      "height": 1
+    },
+    "bottomBlank": 39.3,
+    "bodyWidth": 800,
+    "bodyHeight": 1012.703125,
+    "scrollWidth": 800,
+    "viewportWidth": 800,
+    "footerBottom": 973.703125,
+    "cards": 3,
+    "injectedScripts": 0,
+    "resourceImages": 0,
+    "grassBlocks": 4,
+    "quote": false
+  },
+  {
+    "file": "status-offline-quote.png",
+    "width": 800,
+    "height": 616,
+    "initialViewport": {
+      "width": 1280,
+      "height": 720
+    },
+    "requestedViewport": {
+      "width": 800,
+      "height": 1
+    },
+    "bottomBlank": 38.78,
+    "bodyWidth": 800,
+    "bodyHeight": 616.21875,
+    "scrollWidth": 800,
+    "viewportWidth": 800,
+    "footerBottom": 577.21875,
+    "cards": 1,
+    "injectedScripts": 0,
+    "resourceImages": 0,
+    "grassBlocks": 2,
+    "quote": true
+  },
+  {
+    "file": "status-offline-compact.png",
+    "width": 800,
+    "height": 426,
+    "initialViewport": {
+      "width": 1280,
+      "height": 720
+    },
+    "requestedViewport": {
+      "width": 800,
+      "height": 1
+    },
+    "bottomBlank": 38.56,
+    "bodyWidth": 800,
+    "bodyHeight": 426.4375,
+    "scrollWidth": 800,
+    "viewportWidth": 800,
+    "footerBottom": 387.4375,
+    "cards": 1,
+    "injectedScripts": 0,
+    "resourceImages": 0,
+    "grassBlocks": 2,
+    "quote": false
+  },
+  {
+    "file": "status-long-text.png",
+    "width": 800,
+    "height": 809,
+    "initialViewport": {
+      "width": 1280,
+      "height": 720
+    },
+    "requestedViewport": {
+      "width": 800,
+      "height": 1
+    },
+    "bottomBlank": 39.11,
+    "bodyWidth": 800,
+    "bodyHeight": 808.890625,
+    "scrollWidth": 800,
+    "viewportWidth": 800,
+    "footerBottom": 769.890625,
+    "cards": 1,
+    "injectedScripts": 0,
+    "resourceImages": 0,
+    "grassBlocks": 2,
+    "quote": true
+  },
+  {
+    "file": "status-four.png",
+    "width": 800,
+    "height": 1460,
+    "initialViewport": {
+      "width": 1280,
+      "height": 720
+    },
+    "requestedViewport": {
+      "width": 800,
+      "height": 1
+    },
+    "bottomBlank": 39.23,
+    "bodyWidth": 800,
+    "bodyHeight": 1459.765625,
+    "scrollWidth": 800,
+    "viewportWidth": 800,
+    "footerBottom": 1420.765625,
+    "cards": 4,
+    "injectedScripts": 0,
+    "resourceImages": 0,
+    "grassBlocks": 5,
+    "quote": false
+  },
+  {
+    "file": "status-five-1.png",
+    "width": 800,
+    "height": 1460,
+    "initialViewport": {
+      "width": 1280,
+      "height": 720
+    },
+    "requestedViewport": {
+      "width": 800,
+      "height": 1
+    },
+    "bottomBlank": 39.23,
+    "bodyWidth": 800,
+    "bodyHeight": 1459.765625,
+    "scrollWidth": 800,
+    "viewportWidth": 800,
+    "footerBottom": 1420.765625,
+    "cards": 4,
+    "injectedScripts": 0,
+    "resourceImages": 0,
+    "grassBlocks": 5,
+    "quote": false
+  },
+  {
+    "file": "status-five-2.png",
+    "width": 800,
+    "height": 553,
+    "initialViewport": {
+      "width": 1280,
+      "height": 720
+    },
+    "requestedViewport": {
+      "width": 800,
+      "height": 1
+    },
+    "bottomBlank": 39.08,
+    "bodyWidth": 800,
+    "bodyHeight": 552.921875,
+    "scrollWidth": 800,
+    "viewportWidth": 800,
+    "footerBottom": 513.921875,
+    "cards": 1,
+    "injectedScripts": 0,
+    "resourceImages": 0,
+    "grassBlocks": 2,
+    "quote": false
+  },
+  {
+    "file": "status-offline-viewport-600.png",
+    "width": 800,
+    "height": 492,
+    "initialViewport": {
+      "width": 600,
+      "height": 1200
+    },
+    "requestedViewport": {
+      "width": 800,
+      "height": 1
+    },
+    "bottomBlank": 38.97,
+    "bodyWidth": 800,
+    "bodyHeight": 492.03125,
+    "scrollWidth": 800,
+    "viewportWidth": 800,
+    "footerBottom": 453.03125,
+    "cards": 1,
+    "injectedScripts": 0,
+    "resourceImages": 0,
+    "grassBlocks": 2,
+    "quote": false
+  },
+  {
+    "file": "status-offline-viewport-1600.png",
+    "width": 800,
+    "height": 492,
+    "initialViewport": {
+      "width": 1600,
+      "height": 300
+    },
+    "requestedViewport": {
+      "width": 800,
+      "height": 1
+    },
+    "bottomBlank": 38.97,
+    "bodyWidth": 800,
+    "bodyHeight": 492.03125,
+    "scrollWidth": 800,
+    "viewportWidth": 800,
+    "footerBottom": 453.03125,
+    "cards": 1,
+    "injectedScripts": 0,
+    "resourceImages": 0,
+    "grassBlocks": 2,
+    "quote": false
+  }
+]

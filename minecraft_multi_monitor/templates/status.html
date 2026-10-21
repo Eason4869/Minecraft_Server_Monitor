@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=800, height=1">
+<style>
+* { box-sizing: border-box; }
+html { margin: 0; padding: 0; width: 800px; height: auto; min-height: 0; background: #e7ecdf; }
+body { margin: 0; padding: 20px; width: 800px; height: auto; min-height: 0; color: #28392c; font-family: "Microsoft YaHei", "Noto Sans CJK SC", sans-serif; }
+.sheet { width: 100%; border: 3px solid #304637; background: #f4f3e9; padding: 0 18px 16px; box-shadow: inset 0 0 0 3px #d8dfca; }
+.masthead { position: relative; display: flex; align-items: center; gap: 17px; margin: 0 -18px 20px; padding: 22px 22px 27px; color: #f4f7e9; background: #2d4938; border-bottom: 7px solid #6a4c32; }
+.masthead::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 7px; background: repeating-linear-gradient(90deg, #7fb44c 0 18px, #639642 18px 36px, #a1c65b 36px 44px, #78a34c 44px 62px); }
+.hero-block { flex: none; width: 64px; height: 64px; filter: drop-shadow(0 5px 0 #20382b); }
+.hero-copy { flex: 1; min-width: 0; }
+.eyebrow { font: bold 11px/1.5 Consolas, monospace; letter-spacing: 2px; color: #b6d58b; }
+h1 { font-size: 29px; line-height: 1.35; margin: 5px 0 0; letter-spacing: 2px; }
+.subtitle { margin-top: 5px; color: #c0cdbb; font-size: 11px; }
+.page { flex: none; padding: 9px 11px; border: 2px solid #789463; background: #223a2c; font: bold 13px Consolas, monospace; color: #d9ebbd; box-shadow: inset 2px 2px #172b20; }
+.card { margin-top: 14px; padding: 18px 19px 15px; background: #fffef7; border: 2px solid #a8b39b; border-left: 5px solid #68a24b; box-shadow: 3px 3px 0 #d9ddcc; }
+.card.offline { border-left-color: #b36a55; }
+.card.unknown { border-left-color: #ba964b; }
+.card-head { display: flex; align-items: center; gap: 13px; }
+.icon { flex: none; width: 48px; height: 48px; image-rendering: pixelated; }
+.icon-image { border: 2px solid #a6b493; padding: 3px; background: #edf0e1; }
+h2 { flex: 1; min-width: 0; margin: 0; font-size: 22px; line-height: 1.4; overflow-wrap: anywhere; }
+.badge { flex: none; display: flex; align-items: center; gap: 7px; border: 1px solid; padding: 5px 9px; font-size: 12px; font-weight: bold; white-space: nowrap; }
+.badge::before { content: ""; width: 7px; height: 7px; background: currentColor; box-shadow: 1px 1px 0 #0002; }
+.badge.online { background: #e7f0da; color: #527738; border-color: #bfd1a7; }
+.badge.offline { background: #f6e8de; color: #a05d49; border-color: #dfbeac; }
+.badge.unknown { background: #fbf0d0; color: #9b7a30; border-color: #dfce9b; }
+.details { display: grid; grid-template-columns: 1fr 1fr; gap: 9px 20px; margin-top: 16px; padding-top: 13px; border-top: 1px dashed #d4dbc5; }
+.field { display: flex; align-items: baseline; gap: 13px; min-width: 0; font-size: 14px; line-height: 1.7; }
+.field.wide { grid-column: 1 / -1; }
+.label { flex: none; color: #849078; font-size: 12px; }
+.value { min-width: 0; color: #41543d; overflow-wrap: anywhere; white-space: pre-wrap; }
+.field-players .value { font-family: Consolas, "Microsoft YaHei", monospace; font-weight: bold; font-size: 17px; color: #466b31; }
+.bar { position: relative; margin-top: 13px; height: 10px; border: 2px solid #536a3b; background: #dbe2ca; }
+.fill { height: 6px; background: #80b64d; }
+.bar::after { position: absolute; inset: 0; content: ""; background: repeating-linear-gradient(90deg, transparent 0 36px, #425d3e66 36px 38px); }
+.source { margin-top: 11px; color: #8e9982; font: 10px Consolas, "Microsoft YaHei", monospace; letter-spacing: .3px; }
+.quote { display: flex; align-items: flex-start; gap: 13px; margin-top: 17px; padding: 14px 16px; border: 2px solid #ccbea1; background: #eee7d5; box-shadow: 3px 3px 0 #e0d9c5; }
+.book { flex: none; width: 22px; height: 26px; margin-top: 3px; background: #7d5d42; border: 2px solid #59422e; box-shadow: inset 4px 0 #a08153, inset 0 -4px #d7c99e; }
+.quote-title { font-size: 10px; color: #9b835f; letter-spacing: 2px; margin-bottom: 5px; }
+.quote-text { font-size: 13px; line-height: 1.8; color: #7b664b; white-space: pre-wrap; overflow-wrap: anywhere; }
+.footer { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-top: 18px; padding-top: 11px; border-top: 1px solid #d9dfcd; font-size: 10px; line-height: 1.6; color: #919b85; }
+.footer-brand { font-family: Consolas, "Microsoft YaHei", monospace; color: #6c8458; }
+</style>
+</head>
+<body>
+{% macro grass_block(css) -%}
+<svg class="{{ css }}" viewBox="0 0 64 64" aria-hidden="true" shape-rendering="crispEdges">
+<path fill="#83ad4e" d="M4 17 32 3 60 17 32 31Z"/>
+<path fill="#a4c565" d="m12 17 8-4 8 4-8 4zm20-9 8 4-8 4-8-4zm8 9 8-4 8 4-8 4zm-8 4 8 4-8 4-8-4z"/>
+<path fill="#8c6943" d="M4 17 32 31 32 61 4 47Z"/>
+<path fill="#6a4d34" d="M32 31 60 17 60 47 32 61Z"/>
+<path fill="#658d3d" d="M4 17 32 31 32 41 26 38 26 33 19 30 19 35 12 31 12 26 4 22Z"/>
+<path fill="#496f31" d="M32 31 60 17 60 24 53 28 53 33 46 37 46 32 39 36 39 41 32 44Z"/>
+<path fill="#a78253" d="m8 33 6 3v5l-6-3zm13 10 6 3v6l-6-3zm-9 1 5 3v5l-5-3z"/>
+<path fill="#88633f" d="m37 47 7-4v6l-7 4zm13-11 6-3v5l-6 3zm0 10 6-3v5l-6 3z"/>
+</svg>
+{%- endmacro %}
+<main class="sheet" id="mc-card">
+<header class="masthead">
+{{ grass_block('hero-block') }}
+<div class="hero-copy"><div class="eyebrow">EASONCLAW · MINECRAFT MONITOR</div><h1>方块世界观测站</h1><div class="subtitle">每一个世界，都值得保持连接。</div></div>
+<div class="page">{{ page }} / {{ pages }}</div>
+</header>
+{% for server in servers %}
+<section class="card {{ server.status }}">
+  <div class="card-head">
+    {% if server.icon %}<img class="icon icon-image" src="{{ server.icon }}" alt="">
+    {% else %}{{ grass_block('icon') }}{% endif %}
+    <h2>{{ server.name | safe }}</h2><div class="badge {{ server.status }}">{{ server.label }}</div>
+  </div>
+  <div class="details">{% for field in server.fields %}
+    <div class="field{% if field.wide %} wide{% endif %}{% if field.label == '在线玩家' %} field-players{% endif %}"><span class="label">{{ field.label | safe }}</span><span class="value">{{ field.value | safe }}</span></div>
+  {% endfor %}</div>
+  {% if server.ratio is not none %}<div class="bar"><div class="fill" style="width: {{ server.ratio }}%"></div></div>{% endif %}
+  {% if server.source %}<div class="source">STATUS SOURCE / {{ server.source | safe }}</div>{% endif %}
+</section>
+{% endfor %}
+{% if quote %}<aside class="quote"><div class="book"></div><div><div class="quote-title">冒险手记</div><div class="quote-text">{{ quote | safe }}</div></div></aside>{% endif %}
+<footer class="footer"><span class="footer-brand">EasonClaw / BLOCK WATCH</span><span>玩家名单可能为样本 · 查询异常不代表离线</span></footer>
+</main>
+</body>
+</html>

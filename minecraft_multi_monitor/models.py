@@ -63,3 +63,5 @@ class ServerSnapshot:
     host: str = ""
     delay: int | None = None
     error: str | None = None
+    source: str = ""
+    icon: str = ""

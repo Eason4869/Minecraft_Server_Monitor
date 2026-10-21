@@ -1,0 +1,65 @@
+{
+  "target_group": "",
+  "check_interval": 45,
+  "enable_auto_monitor": true,
+  "mcbbs_api": true,
+  "display_options": {
+    "show_server_name": true,
+    "show_server_address": false,
+    "show_server_type": true,
+    "show_game_version": false,
+    "show_online_players": true,
+    "show_motd": true,
+    "show_player_list": false,
+    "show_update_time": true,
+    "show_hitokoto": false
+  },
+  "server_entries": [
+    {
+      "__template_key": "minecraft_server",
+      "key": "survival",
+      "enabled": true,
+      "server_name": "生存服",
+      "server_ip": "play.example.com",
+      "server_port": 25565,
+      "server_type": "java",
+      "check_interval": 0
+    },
+    {
+      "__template_key": "minecraft_server",
+      "key": "bedrock",
+      "enabled": true,
+      "server_name": "基岩服",
+      "server_ip": "bedrock.example.com",
+      "server_port": 19132,
+      "server_type": "bedrock",
+      "check_interval": 60
+    }
+  ],
+  "enable_api_fallback": true,
+  "group_entries": [
+    {
+      "__template_key": "group_subscription",
+      "session": "qq-main:GroupMessage:123456789",
+      "server_keys": [
+        "survival"
+      ],
+      "default_server": "",
+      "query_style": "image",
+      "notification_style": "text",
+      "notify_mode": "status"
+    },
+    {
+      "__template_key": "group_subscription",
+      "session": "qq-main:GroupMessage:987654321",
+      "server_keys": [
+        "survival",
+        "bedrock"
+      ],
+      "default_server": "bedrock",
+      "query_style": "image",
+      "notification_style": "image",
+      "notify_mode": "all"
+    }
+  ]
+}

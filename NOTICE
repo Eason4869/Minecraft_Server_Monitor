@@ -1,0 +1,18 @@
+EasonClaw · MC 服务器监控
+Package: astrbot_plugin_easonclaw_mc
+Maintainer: Eason4869
+Repository: https://github.com/Eason4869/astrbot_plugin_easonclaw_mc
+
+Derived from XiaolongYang-HZAU/astrbot_plugin_minecraft_multy_monitor by xlyang.
+Upstream: https://github.com/XiaolongYang-HZAU/astrbot_plugin_minecraft_multy_monitor
+Original license: GNU Affero General Public License, version 3 (see LICENSE).
+
+Modified on 2026-10-21 by Eason4869:
+Group-scoped subscriptions and permissions; resilient status collection and
+notification retries; HTML image rendering; lifecycle and concurrency fixes;
+regression tests, documentation, packaging and EasonClaw branding.
+The grass-block/claw SVG and PNG logo are original assets for this project.
+This distribution retains the upstream AGPL-3.0 license.
+
+Minecraft is a trademark of Mojang / Microsoft. This community plugin is not
+affiliated with or endorsed by Mojang / Microsoft.

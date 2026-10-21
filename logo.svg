@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 256 256" role="img" aria-labelledby="title desc">
+  <title id="title">EasonClaw MC</title>
+  <desc id="desc">原创像素草方块、三道金色爪痕与在线指示灯。</desc>
+  <rect width="256" height="256" rx="32" fill="#172e25"/>
+  <path d="M32 76V32h44M180 224h44v-44" fill="none" stroke="#36533d" stroke-width="8"/>
+  <g shape-rendering="crispEdges">
+    <path d="M40 92 128 48 216 92 216 180 128 224 40 180Z" fill="#10251b"/>
+    <path d="M40 84 128 40 216 84 128 128Z" fill="#83b34d"/>
+    <path d="m64 84 24-12 24 12-24 12zm40-32 24-12 24 12-24 12zm48 16 24 12-24 12-24-12zm-24 32 24 12-24 12-24-12z" fill="#b7d975"/>
+    <path d="M40 84 128 128 128 216 40 172Z" fill="#93683e"/>
+    <path d="M128 128 216 84 216 172 128 216Z" fill="#654a32"/>
+    <path d="M40 84 128 128v24l-20-10v-12l-20-10v16l-20-10v-16l-28-14Z" fill="#658f3b"/>
+    <path d="m128 128 88-44v24l-20 10v12l-20 10v-12l-24 12v16l-24 12Z" fill="#476e31"/>
+    <path d="m52 132 16 8v16l-16-8zm36 28 20 10v20l-20-10zm-28 0 12 6v12l-12-6z" fill="#b18a54"/>
+    <path d="m108 154 12 6v12l-12-6zm-28-26 12 6v12l-12-6z" fill="#69482e"/>
+    <path d="m145 156 12-6-8 38-12 6zm24-12 12-6-8 38-12 6zm24-12 12-6-8 38-12 6z" fill="#382f24"/>
+    <path d="m145 148 12-6-8 38-12 6zm24-12 12-6-8 38-12 6zm24-12 12-6-8 38-12 6z" fill="#f3d78a"/>
+    <path d="M180 24h12v12h-12zm20 0h12v12h-12zm20 0h12v12h-12z" fill="#405b3e"/>
+    <path d="M200 24h12v12h-12z" fill="#88bd50"/>
+    <path d="M220 24h12v12h-12z" fill="#d0e995"/>
+  </g>
+</svg>
