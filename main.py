@@ -20,7 +20,7 @@ from .minecraft_multi_monitor.services import get_hitokoto, notify_session
 from .minecraft_multi_monitor.subscriptions import GroupSubscription, SubscriptionStore
 
 
-@register("astrbot_plugin_easonclaw_mc", "Eason4869", "EasonClaw · MC 服务器监控", "0.3.0")
+@register("astrbot_plugin_minecraft_monitor", "Eason4869", "Minecraft 服务器监控", "0.3.1")
 class MyPlugin(Star):
     def __init__(self, context: Context, config: AstrBotConfig = None):
         super().__init__(context)
@@ -334,11 +334,16 @@ class MyPlugin(Star):
             return
         if action in {"帮助", "help"}:
             yield event.plain_result(
-                "/mc 列表\n/mc 查询 [key] [image/text]\n管理员：/mc 订阅 key、退订 key、默认 key、样式 image/text、通知样式 image/text、通知 all/status/off、本群\n全局：/start_server_monitor、/stop_server_monitor、/重置监控"
+                "/mc 列表\n/mc 查询 [key] [image/text]\n管理员：/mc 订阅 key、退订 key、默认 key、样式 image/text、通知样式 image/text、通知 all/status/off、本群\n全局：/mc 启动、/mc 停止、/mc 重置"
             )
             return
         if not event.is_admin():
             yield event.plain_result("❌ 此操作仅限 AstrBot 管理员")
+            return
+        controls = {"启动": self._start_command, "停止": self._stop_command, "重置": self._reset_command}
+        if action in controls:
+            async for result in controls[action](event):
+                yield result
             return
         if not event.get_group_id():
             yield event.plain_result("❌ 请在目标群执行分群设置")
@@ -392,34 +397,18 @@ class MyPlugin(Star):
             logger.error(f"分群设置保存失败 {type(exc).__name__}: {exc}")
             yield event.plain_result("❌ 配置保存失败，已保留原设置，请检查日志")
 
-    @filter.command("查询")
-    async def query_server_status(self, event: AstrMessageEvent):
-        async for result in self._query(event):
-            yield result
-
-    @filter.command("start_server_monitor")
-    async def start_server_monitor_task(self, event: AstrMessageEvent):
-        if not event.is_admin():
-            yield event.plain_result("❌ 此操作仅限 AstrBot 管理员")
-        elif not self.servers:
+    async def _start_command(self, event):
+        if not self.servers:
             yield event.plain_result("❌ 请先在 WebUI 配置 server_entries")
         else:
             await self._start_monitor()
             yield event.plain_result(f"✅ 监控已启动，共 {len(self.servers)} 台服务器")
 
-    @filter.command("stop_server_monitor")
-    async def stop_server_monitor_task(self, event: AstrMessageEvent):
-        if not event.is_admin():
-            yield event.plain_result("❌ 此操作仅限 AstrBot 管理员")
-            return
+    async def _stop_command(self, event):
         await self._stop_monitor()
         yield event.plain_result("✅ 全局监控和待启动任务已停止")
 
-    @filter.command("重置监控")
-    async def reset_monitor(self, event: AstrMessageEvent):
-        if not event.is_admin():
-            yield event.plain_result("❌ 此操作仅限 AstrBot 管理员")
-            return
+    async def _reset_command(self, event):
         async with self.control_lock:
             running = any(task and not task.done() for task in (self.task, self.startup_task))
             await self._stop_monitor_unlocked()

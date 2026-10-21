@@ -9,7 +9,7 @@ def test_non_admin_cannot_stop_or_mutate():
     async def run():
         plugin = make_plugin()
         event = Event()
-        assert "管理员" in (await anext(plugin.stop_server_monitor_task(event)))
+        assert "管理员" in (await anext(plugin.mc_command(event, "停止")))
         assert "管理员" in (await anext(plugin.mc_command(event, "订阅", "s")))
         assert plugin.subscriptions.get(event.unified_msg_origin) is None
         await plugin.terminate()
@@ -21,16 +21,16 @@ def test_queries_are_scoped_and_admin_can_persist_subscription():
     async def run():
         plugin = make_plugin()
         event = Event()
-        assert "未绑定" in (await anext(plugin.query_server_status(event)))
+        assert "未绑定" in (await anext(plugin.mc_command(event, "查询")))
         admin = Event(admin=True)
         assert "已订阅" in (await anext(plugin.mc_command(admin, "订阅", "s")))
         assert plugin.config.saved
         result = await anext(plugin.mc_command(event, "列表"))
         assert "生存服" in result and "隐藏服" not in result
         other = Event(umo="other:GroupMessage:123")
-        assert "未绑定" in (await anext(plugin.query_server_status(other)))
+        assert "未绑定" in (await anext(plugin.mc_command(other, "查询")))
         private = Event(umo="bot:FriendMessage:user", group="")
-        assert "私聊" in (await anext(plugin.query_server_status(private)))
+        assert "私聊" in (await anext(plugin.mc_command(private, "查询")))
         await plugin.terminate()
 
     asyncio.run(run())
@@ -40,7 +40,7 @@ def test_admin_query_in_unbound_group_does_not_publish_global_catalog():
     async def run():
         plugin = make_plugin()
         admin = Event(admin=True)
-        assert "未绑定" in (await anext(plugin.query_server_status(admin)))
+        assert "未绑定" in (await anext(plugin.mc_command(admin, "查询")))
         await plugin.terminate()
 
     asyncio.run(run())
@@ -124,7 +124,7 @@ def test_render_failure_returns_text_and_never_leaks_unbound_server():
             side_effect=lambda server, source: unavailable_snapshot(server)
         )
         plugin.html_render = AsyncMock(side_effect=RuntimeError("renderer offline"))
-        results = [result async for result in plugin.query_server_status(Event())]
+        results = [result async for result in plugin.mc_command(Event(), "查询")]
         assert results and all("隐藏服" not in result for result in results)
         assert "查询异常" in results[0]
         await plugin.terminate()

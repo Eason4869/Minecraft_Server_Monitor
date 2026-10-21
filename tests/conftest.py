@@ -17,7 +17,11 @@ def module(name, **attrs):
 
 class Filters:
     def command(self, *args, **kwargs):
-        return lambda function: function
+        def decorate(function):
+            function.registered_command = args[0]
+            return function
+
+        return decorate
 
 
 class MessageChain:

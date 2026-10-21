@@ -71,7 +71,7 @@ class JsonClient:
         started = asyncio.get_running_loop().time()
         try:
             if self.session is None or self.session.closed:
-                self.session = aiohttp.ClientSession(headers={"User-Agent": "EasonClawMC/0.3.0"})
+                self.session = aiohttp.ClientSession(headers={"User-Agent": "MinecraftServerMonitor/0.3.1"})
             async with self.session.get(
                 url, params=params, timeout=aiohttp.ClientTimeout(total=15)
             ) as response:

@@ -7,7 +7,7 @@ import zipfile
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-NAME = "astrbot_plugin_easonclaw_mc"
+NAME = "astrbot_plugin_minecraft_monitor"
 
 
 def main():

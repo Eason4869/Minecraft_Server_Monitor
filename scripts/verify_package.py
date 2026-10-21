@@ -22,7 +22,7 @@ def main():
     version = re.search(r"^version:\s*(\d+\.\d+\.\d+)\s*$", metadata, re.MULTILINE)[1]
     archive_path = ROOT / "dist" / f"{name}-v{version}.zip"
     manifest = json.loads((ROOT / "dist" / f"manifest-v{version}.json").read_text(encoding="utf-8"))
-    with tempfile.TemporaryDirectory(prefix="easonclaw-package-") as temporary:
+    with tempfile.TemporaryDirectory(prefix="minecraft-monitor-package-") as temporary:
         plugins = Path(temporary) / "data" / "plugins"
         with zipfile.ZipFile(archive_path) as archive:
             assert archive.testzip() is None

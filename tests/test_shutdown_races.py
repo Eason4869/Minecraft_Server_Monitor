@@ -111,9 +111,9 @@ def test_stop_requested_during_reset_remains_stopped():
 
         plugin.task = asyncio.create_task(old_monitor())
         await asyncio.sleep(0)
-        reset = asyncio.create_task(anext(plugin.reset_monitor(Event(admin=True))))
+        reset = asyncio.create_task(anext(plugin.mc_command(Event(admin=True), "重置")))
         await cancelling.wait()
-        stop = asyncio.create_task(anext(plugin.stop_server_monitor_task(Event(admin=True))))
+        stop = asyncio.create_task(anext(plugin.mc_command(Event(admin=True), "停止")))
         await asyncio.sleep(0)
         release.set()
         await asyncio.gather(reset, stop)

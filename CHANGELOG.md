@@ -1,23 +1,25 @@
 # Changelog
 
-## 0.3.0 — 2026-10-21
+## 0.3.1 — 2026-10-21
 
 ### 品牌与发布
-- 包名、插件注册标识及 ZIP 顶层目录统一为 `astrbot_plugin_easonclaw_mc`，显示名为「EasonClaw · MC 服务器监控」。
-- 新仓库为 `Eason4869/astrbot_plugin_easonclaw_mc`，维护者为 Eason4869；保留上游历史、来源说明及 AGPL-3.0 许可证。
+- 包名、插件注册标识及 ZIP 顶层目录统一为 `astrbot_plugin_minecraft_monitor`，显示名为「Minecraft 服务器监控」。
+- 仓库为 `Eason4869/Minecraft_Server_Monitor`，维护者为 Eason4869；保留来源说明及 AGPL-3.0 许可证。
 - 新增原创 MC 风格草方块与爪痕 Logo，提供根目录 `logo.png`、`logo.svg` 和导出脚本。
-- 图片页眉改为 EasonClaw 品牌，左下角由 ASTRBOT 改为 `EasonClaw / BLOCK WATCH`。
-- 查询源请求的 User-Agent 同步为 `EasonClawMC/0.3.0`。
-- README 补齐仓库安装、旧包配置迁移、常见问题、校验方式与实际验证边界。
+- 图片页眉使用 Minecraft Monitor，左下角保留 `EasonClaw / BLOCK WATCH` 署名。
+- 查询源请求的 User-Agent 为 `MinecraftServerMonitor/0.3.1`。
+- README 完善安装配置、常见问题、校验方式与实际验证边界；来源仅保留简短链接。
+
+### 指令
+- 统一使用 `/mc` 入口，移除独立的兼容命令。
+- 全局监控控制使用 `/mc 启动`、`/mc 停止`、`/mc 重置`，仅限 AstrBot 管理员，支持群聊与私聊。
+- 分群管理仍要求在目标群执行；群内查询继续按当前群绑定过滤。
 
 ### 复审与验证
 - 保留 0.2.1 的五项修复，复查分群权限、通知计时及渲染任务生命周期，未发现需要阻止发布的新问题。
 - 新增 8 个回归场景：部分退订后文字回退、一言等待期间撤权、渲染失败期间退订/关闭/缩小通知类型、发送槽等待期间撤权及跨实例隔离、取消单个渲染后释放锁。
+- 新增 6 个指令用例，验证唯一命令注册、管理员权限、私聊控制生命周期与无服务器启动；全套 71 个测试通过。
 - 图片预览增加品牌检查，确认不再出现 AstrBot 署名；CI 增加安装包逐文件校验及解压导入检查。
-
-### 升级提示
-- AstrBot 按插件目录名保存配置；新标识不会自动读取旧配置。先停用旧包，备份并导入新包的 `data/config/astrbot_plugin_easonclaw_mc_config.json`，避免同时运行产生重复通知。
-- 配置字段、固定服务器 key 和群 UMO 保持兼容；具体迁移步骤见 README。
 
 ## 0.2.1 — 2026-10-21
 

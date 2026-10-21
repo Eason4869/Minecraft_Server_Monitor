@@ -1,5 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 256 256" role="img" aria-labelledby="title desc">
-  <title id="title">EasonClaw MC</title>
+  <title id="title">Minecraft Server Monitor</title>
   <desc id="desc">原创像素草方块、三道金色爪痕与在线指示灯。</desc>
   <rect width="256" height="256" rx="32" fill="#172e25"/>
   <path d="M32 76V32h44M180 224h44v-44" fill="none" stroke="#36533d" stroke-width="8"/>

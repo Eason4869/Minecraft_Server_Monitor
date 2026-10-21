@@ -1,7 +1,7 @@
-name: astrbot_plugin_easonclaw_mc
+name: astrbot_plugin_minecraft_monitor
 desc: 面向 AstrBot 的 Minecraft 多服务器监控插件，支持同实例监控多台 Java/Bedrock 服务器，内置可切换的 MineBBS API / mcstatus.io 查询源，支持分群订阅、图片卡片查询和状态变化通知。
-version: 0.3.0
+version: 0.3.1
 author: Eason4869
-repo: "https://github.com/Eason4869/astrbot_plugin_easonclaw_mc"
-display_name: EasonClaw · MC 服务器监控
+repo: "https://github.com/Eason4869/Minecraft_Server_Monitor"
+display_name: Minecraft 服务器监控
 astrbot_version: ">=4.10.4"
