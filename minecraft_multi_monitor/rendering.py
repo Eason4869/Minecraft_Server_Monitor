@@ -10,6 +10,8 @@ from pathlib import Path
 
 from .monitoring import server_info_fields
 
+LOCK_TIMEOUT = 10
+
 
 def safe_icon(value):
     prefix = "data:image/png;base64,"
@@ -52,6 +54,12 @@ class CardRenderer:
         await asyncio.gather(*tasks, return_exceptions=True)
         self.cache.clear()
 
+    def invalidate(self, image):
+        # A failed upload can mean the cached URL/path is no longer usable.
+        for key, (_, result) in list(self.cache.items()):
+            if result == image:
+                self.cache.pop(key)
+
     async def _render_pages(self, snapshots, options, quote):
         rows = []
         for snapshot in snapshots:
@@ -83,7 +91,13 @@ class CardRenderer:
             )
         pages = [rows[index : index + 4] for index in range(0, len(rows), 4)]
         results = []
-        async with self.lock:
+        started = time.monotonic()
+        try:
+            await asyncio.wait_for(self.lock.acquire(), timeout=LOCK_TIMEOUT)
+        except asyncio.TimeoutError as exc:
+            raise TimeoutError(f"stage=lock wait={time.monotonic() - started:.2f}s") from exc
+        waited = time.monotonic() - started
+        try:
             for index, page in enumerate(pages, 1):
                 data = {
                     "servers": page,
@@ -116,4 +130,11 @@ class CardRenderer:
                 while len(self.cache) > 32:
                     self.cache.popitem(last=False)
                 results.append(result)
+        except Exception as exc:
+            raise RuntimeError(
+                f"stage=render wait={waited:.2f}s elapsed={time.monotonic() - started:.2f}s "
+                f"{type(exc).__name__}: {exc}"
+            ) from exc
+        finally:
+            self.lock.release()
         return results

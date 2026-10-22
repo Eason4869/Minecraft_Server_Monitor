@@ -12,7 +12,7 @@ from .minecraft_multi_monitor.config import (
     load_settings,
     safe_bool,
 )
-from .minecraft_multi_monitor.delivery import NotificationQueue, accepts_notification
+from .minecraft_multi_monitor.delivery import MAX_ATTEMPTS, NotificationQueue, accepts_notification
 from .minecraft_multi_monitor.models import ServerConfig
 from .minecraft_multi_monitor.monitoring import detect_changes, format_server_info
 from .minecraft_multi_monitor.rendering import CardRenderer
@@ -20,7 +20,7 @@ from .minecraft_multi_monitor.services import get_hitokoto, notify_session
 from .minecraft_multi_monitor.subscriptions import GroupSubscription, SubscriptionStore
 
 
-@register("astrbot_plugin_minecraft_monitor", "Eason4869", "Minecraft 服务器监控", "0.3.1")
+@register("astrbot_plugin_minecraft_monitor", "Eason4869", "Minecraft 服务器监控", "0.3.2")
 class MyPlugin(Star):
     def __init__(self, context: Context, config: AstrBotConfig = None):
         super().__init__(context)
@@ -142,12 +142,17 @@ class MyPlugin(Star):
             async with self.fetch_semaphore:
                 if self.closed:
                     return None
+                started = asyncio.get_running_loop().time()
                 request = asyncio.create_task(self.status_client.fetch_status(server, source))
                 self.inflight_requests.add(request)
                 try:
                     snapshot = await request
                 except Exception as exc:
-                    logger.warning(f"[{source}] [{server.key}] 查询异常 {type(exc).__name__}: {exc}")
+                    logger.warning(
+                        f"[{source}] [{server.key}] 查询异常 stage=fetch "
+                        f"elapsed={asyncio.get_running_loop().time() - started:.2f}s "
+                        f"{type(exc).__name__}: {exc}"
+                    )
                     return None
                 finally:
                     self.inflight_requests.discard(request)
@@ -212,21 +217,54 @@ class MyPlugin(Star):
             hitokoto = await get_hitokoto() or ""
             if hitokoto:
                 text += f"\n\n💬 {hitokoto}"
+        # Quote/render waits can outlive a subscription or style change.
+        group = self.subscriptions.get(item.session)
+        if self.closed or not accepts_notification(group, item):
+            return True
         if group.notification_style == "image" and item.snapshot is not None:
-            try:
-                if await asyncio.wait_for(self._send_image_notification(item, hitokoto), timeout=25):
-                    return True
-            except Exception as exc:
-                logger.warning(f"通知图片降级 {type(exc).__name__}: {exc}")
+            if await self._send_image_notification(item, hitokoto):
+                return True
+            group = self.subscriptions.get(item.session)
+            if self.closed or not accepts_notification(group, item):
+                return True
+            if group.notification_style == "image" and item.attempts + 1 < MAX_ATTEMPTS:
+                return False
+            logger.warning(
+                f"通知图片降级 [{item.session}] [{item.server_key}] "
+                f"attempt={item.attempts + 1}/{MAX_ATTEMPTS} action=text"
+            )
         if self.closed or not accepts_notification(self.subscriptions.get(item.session), item):
             return True
         return await notify_session(self.context, item.session, text)
 
     async def _send_image_notification(self, item, quote):
-        images = await self.renderer.render_pages([item.snapshot], self.display_options, quote)
+        started = asyncio.get_running_loop().time()
+        try:
+            images = await asyncio.wait_for(
+                self.renderer.render_pages([item.snapshot], self.display_options, quote), timeout=35
+            )
+            if not images:
+                raise ValueError("渲染服务未返回图片")
+        except Exception as exc:
+            logger.warning(
+                f"通知图片失败 [{item.session}] [{item.server_key}] stage=render "
+                f"attempt={item.attempts + 1}/{MAX_ATTEMPTS} "
+                f"elapsed={asyncio.get_running_loop().time() - started:.2f}s {type(exc).__name__}: {exc}"
+            )
+            return False
         if self.closed or not accepts_notification(self.subscriptions.get(item.session), item):
             return True
-        return await notify_session(self.context, item.session, item.message, images[0])
+        if self.subscriptions.get(item.session).notification_style != "image":
+            return False
+        sent = await notify_session(self.context, item.session, item.message, images[0])
+        if not sent:
+            self.renderer.invalidate(images[0])
+            logger.warning(
+                f"通知图片失败 [{item.session}] [{item.server_key}] stage=image_send "
+                f"attempt={item.attempts + 1}/{MAX_ATTEMPTS} "
+                f"elapsed={asyncio.get_running_loop().time() - started:.2f}s"
+            )
+        return sent
 
     async def _delivery_loop(self):
         while True:
@@ -295,6 +333,7 @@ class MyPlugin(Star):
             if not snapshots:
                 return
             if style == "image":
+                started = asyncio.get_running_loop().time()
                 try:
                     images = await self.renderer.render_pages(snapshots, self.display_options, quote or "")
                     for index, image in enumerate(images):
@@ -304,7 +343,12 @@ class MyPlugin(Star):
                         yield event.image_result(image)
                     return
                 except Exception as exc:
-                    logger.warning(f"查询图片降级 {type(exc).__name__}: {exc}")
+                    logger.warning(
+                        f"查询图片降级 [{event.unified_msg_origin}] "
+                        f"servers={','.join(snapshot.key for snapshot in snapshots)} "
+                        f"elapsed={asyncio.get_running_loop().time() - started:.2f}s "
+                        f"{type(exc).__name__}: {exc}"
+                    )
             for index in range(0, len(snapshots), 4):
                 page = self._allowed_query_snapshots(event, snapshots[index : index + 4])
                 if not page:

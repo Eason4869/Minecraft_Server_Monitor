@@ -1,6 +1,8 @@
 import asyncio
 import json
+import math
 from datetime import datetime, timezone
+from email.utils import parsedate_to_datetime
 from urllib.parse import quote
 
 import aiohttp
@@ -8,6 +10,24 @@ from astrbot.api import logger
 
 from .config import safe_int
 from .models import ServerConfig, ServerSnapshot
+
+HTTP_TIMEOUT = 15
+QUERY_BUDGET = 20
+RETRY_DELAY = 0.5
+
+
+def _retry_delay(value):
+    if value:
+        try:
+            delay = float(value)
+        except ValueError:
+            try:
+                delay = (parsedate_to_datetime(value) - datetime.now(timezone.utc)).total_seconds()
+            except (ValueError, TypeError, OverflowError):
+                return RETRY_DELAY
+        if math.isfinite(delay):
+            return max(RETRY_DELAY, delay)
+    return RETRY_DELAY
 
 
 def _now_text(timestamp=None) -> str:
@@ -60,6 +80,8 @@ def unavailable_snapshot(server: ServerConfig, error="查询源不可用，请�
 
 
 class JsonClient:
+    PROVIDER = "JSON"
+
     def __init__(self):
         self.session: aiohttp.ClientSession | None = None
 
@@ -68,38 +90,63 @@ class JsonClient:
             await self.session.close()
 
     async def _get_json(self, url, server, source, *, params=None):
-        started = asyncio.get_running_loop().time()
-        try:
-            if self.session is None or self.session.closed:
-                self.session = aiohttp.ClientSession(headers={"User-Agent": "MinecraftServerMonitor/0.3.1"})
-            async with self.session.get(
-                url, params=params, timeout=aiohttp.ClientTimeout(total=15)
-            ) as response:
-                if response.status != 200:
-                    logger.warning(f"[{source}] [{server.key}] 查询 HTTP {response.status}")
-                    return None
-                # Limit upstream payloads, including a server-provided icon/MOTD.
-                raw = bytearray()
-                async for chunk in response.content.iter_chunked(16384):
-                    raw.extend(chunk)
-                    if len(raw) > 512 * 1024:
-                        raise ValueError("响应超过 512 KiB")
-                data = json.loads(raw)
-                if not isinstance(data, dict):
-                    raise ValueError("API 响应不是对象")
-                return data
-        except (aiohttp.ClientError, asyncio.TimeoutError, ValueError) as exc:
-            elapsed = asyncio.get_running_loop().time() - started
+        loop = asyncio.get_running_loop()
+        started = loop.time()
+        prefix = f"[{source}] [{server.key}] provider={self.PROVIDER}"
+        if self.session is None or self.session.closed:
+            self.session = aiohttp.ClientSession(headers={"User-Agent": "MinecraftServerMonitor/0.3.2"})
+        for attempt in (1, 2):
+            remaining = QUERY_BUDGET - (loop.time() - started)
+            if remaining <= 0:
+                break
+            attempt_started = loop.time()
+            delay = RETRY_DELAY
+            try:
+                async with self.session.get(
+                    url, params=params, timeout=aiohttp.ClientTimeout(total=min(HTTP_TIMEOUT, remaining))
+                ) as response:
+                    if response.status == 200:
+                        # Limit upstream payloads, including a server-provided icon/MOTD.
+                        raw = bytearray()
+                        async for chunk in response.content.iter_chunked(16384):
+                            raw.extend(chunk)
+                            if len(raw) > 512 * 1024:
+                                raise ValueError("响应超过 512 KiB")
+                        data = json.loads(raw)
+                        if not isinstance(data, dict):
+                            raise ValueError("API 响应不是对象")
+                        if attempt > 1:
+                            logger.info(
+                                f"{prefix} 查询重试恢复 attempt={attempt}/2 elapsed={loop.time() - started:.2f}s"
+                            )
+                        return data
+                    reason = f"HTTP {response.status}"
+                    retryable = response.status in {408, 429, 500, 502, 503, 504}
+                    delay = _retry_delay(response.headers.get("Retry-After"))
+            except (aiohttp.ClientError, asyncio.TimeoutError, ValueError) as exc:
+                reason = f"{type(exc).__name__}: {str(exc)[:200]}"
+                retryable = isinstance(
+                    exc, (aiohttp.ClientConnectionError, aiohttp.ClientPayloadError, asyncio.TimeoutError)
+                ) and not isinstance(exc, aiohttp.ClientSSLError)
+            retry = retryable and attempt < 2 and delay <= 2 and loop.time() - started + delay < QUERY_BUDGET
             logger.warning(
-                f"[{source}] [{server.key}] 查询失败 {type(exc).__name__}: {exc}，耗时 {elapsed:.1f}s"
+                f"{prefix} 查询失败 stage=http attempt={attempt}/2 "
+                f"elapsed={loop.time() - attempt_started:.2f}s reason={reason} "
+                f"retry={retry} wait={delay if retry else 0:.2f}s"
             )
-            return None
+            if not retry:
+                break
+            # Release the response before waiting; cancellation must propagate on unload.
+            await asyncio.sleep(delay)
+        return None
 
 
 class MCStatusClient(JsonClient):
+    PROVIDER = "mcstatus.io"
     BASE_URL = "https://api.mcstatus.io/v2/status"
 
     async def fetch_status(self, server: ServerConfig, source: str) -> ServerSnapshot | None:
+        started = asyncio.get_running_loop().time()
         host = server.server_ip
         if ":" in host and not host.startswith("["):
             host = f"[{host}]"
@@ -112,7 +159,10 @@ class MCStatusClient(JsonClient):
         try:
             return self._parse_response(server, data)
         except (ValueError, TypeError, AttributeError) as exc:
-            logger.warning(f"[{source}] [{server.key}] mcstatus 解析失败 {type(exc).__name__}: {exc}")
+            logger.warning(
+                f"[{source}] [{server.key}] provider={self.PROVIDER} 解析失败 stage=parse "
+                f"elapsed={asyncio.get_running_loop().time() - started:.2f}s {type(exc).__name__}: {exc}"
+            )
             return None
 
     def _parse_response(self, server: ServerConfig, data: dict) -> ServerSnapshot:
@@ -162,12 +212,14 @@ class MCStatusClient(JsonClient):
 
 
 class MineBBSClient(JsonClient):
+    PROVIDER = "MineBBS"
     BASE_URL = "https://motd.minebbs.com/api/status"
 
     async def fetch_status(self, server: ServerConfig, source: str) -> ServerSnapshot | None:
         return await self._fetch_with_stype(server, source, "je" if server.server_type == "java" else "be")
 
     async def _fetch_with_stype(self, server, source, stype):
+        started = asyncio.get_running_loop().time()
         data = await self._get_json(
             self.BASE_URL,
             server,
@@ -183,7 +235,10 @@ class MineBBSClient(JsonClient):
         try:
             return self._parse_response(server, data)
         except (ValueError, TypeError, AttributeError) as exc:
-            logger.warning(f"[{source}] [{server.key}] MineBBS 解析失败 {type(exc).__name__}: {exc}")
+            logger.warning(
+                f"[{source}] [{server.key}] provider={self.PROVIDER} 解析失败 stage=parse "
+                f"elapsed={asyncio.get_running_loop().time() - started:.2f}s {type(exc).__name__}: {exc}"
+            )
             return None
 
     def _parse_response(self, server: ServerConfig, data: dict) -> ServerSnapshot:
@@ -230,9 +285,18 @@ class StatusClient:
         self.enable_fallback = enable_fallback
 
     async def fetch_status(self, server, source):
+        started = asyncio.get_running_loop().time()
         snapshot = await self.primary.fetch_status(server, source)
         if snapshot is None and self.enable_fallback:
+            logger.warning(
+                f"[{source}] [{server.key}] 切换备用源 {self.primary.PROVIDER} -> {self.secondary.PROVIDER}"
+            )
             snapshot = await self.secondary.fetch_status(server, source)
+        if snapshot is None:
+            logger.warning(
+                f"[{source}] [{server.key}] 查询源不可用 stage=complete "
+                f"fallback={self.enable_fallback} elapsed={asyncio.get_running_loop().time() - started:.2f}s"
+            )
         return snapshot
 
     async def close(self):

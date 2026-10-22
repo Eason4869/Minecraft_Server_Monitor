@@ -152,7 +152,7 @@ def test_expiry_is_rechecked_after_waiting_for_send_slot():
 
 
 @pytest.mark.parametrize("mode", ["slow_image", "locked_renderer"])
-def test_image_budget_always_leaves_time_for_text_fallback(mode):
+def test_final_image_attempt_leaves_time_for_text_fallback(mode):
     async def run():
         plugin = make_plugin()
         group = bind(plugin, notification_style="image")
@@ -163,7 +163,7 @@ def test_image_budget_always_leaves_time_for_text_fallback(mode):
         async def render(*args):
             if mode == "locked_renderer":
                 await asyncio.Event().wait()
-            await asyncio.sleep(0.18)
+            await asyncio.sleep(0.28)
             return ["https://renderer/card.png"]
 
         async def send(context, session, message, image=None):
@@ -171,6 +171,7 @@ def test_image_budget_always_leaves_time_for_text_fallback(mode):
             if image:
                 await asyncio.sleep(0.14)
                 return False
+            await asyncio.sleep(0.14)
             return True
 
         async def scaled_wait_for(awaitable, timeout):
@@ -178,10 +179,13 @@ def test_image_budget_always_leaves_time_for_text_fallback(mode):
 
         plugin.renderer.render_pages = render
         plugin.notifications.enqueue(
-            group.session, "s", "changed", unavailable_snapshot(plugin.servers[0]), "status"
+            group.session, "s", "changed", unavailable_snapshot(plugin.servers[0]), "status", now=0
         )
         with patch.object(module, "notify_session", send), patch.object(asyncio, "wait_for", scaled_wait_for):
-            await plugin.notifications.flush(plugin._send_notification, plugin.subscriptions.get)
+            for now in (0, 5):
+                await plugin.notifications.flush(plugin._send_notification, plugin.subscriptions.get, now=now)
+                assert plugin.notifications.pending and "text" not in attempts
+            await plugin.notifications.flush(plugin._send_notification, plugin.subscriptions.get, now=20)
         assert attempts[-1:] == ["text"]
         assert not plugin.notifications.pending
         await plugin.terminate()

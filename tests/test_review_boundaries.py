@@ -59,7 +59,8 @@ def test_revoke_while_waiting_for_quote_suppresses_query(style):
 
 
 @pytest.mark.parametrize("change", ["unsubscribe", "off", "status"])
-def test_notification_rechecks_permission_after_failed_render(change):
+@pytest.mark.parametrize("attempts", [0, 2])
+def test_notification_rechecks_permission_after_failed_render(change, attempts):
     async def run():
         plugin = make_plugin()
         group = bind(plugin, ("s",), notification_style="image")
@@ -78,6 +79,7 @@ def test_notification_rechecks_permission_after_failed_render(change):
         plugin.notifications.enqueue(
             group.session, "s", "players changed", unavailable_snapshot(plugin.servers[0]), "players"
         )
+        plugin.notifications.pending[(group.session, "s")].attempts = attempts
         sent = []
 
         async def send(context, session, message, image=None):
